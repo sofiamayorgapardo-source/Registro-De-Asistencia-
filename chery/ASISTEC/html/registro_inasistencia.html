@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Registro de Inasistencia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .tabla-matriz-inasistencia {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            margin-top: 12px;
+        }
+        .tabla-matriz-inasistencia th {
+            background-color: #f1f5f9;
+            color: #334155;
+            padding: 12px 14px;
+            font-weight: 700;
+            border-bottom: 2px solid #cbd5e1;
+        }
+        .tabla-matriz-inasistencia td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .fila-inasistente-activa {
+            background-color: #fff1f2 !important;
+        }
+        .fila-inasistente-activa:hover {
+            background-color: #fee2e2 !important;
+        }
+        .tabla-matriz-inasistencia tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        .chk-caja {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 700;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        .chk-caja input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #dc2626;
+        }
+        .barra-herramientas-matriz {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .alerta-aviso {
+            background-color: #fffbeb;
+            border-left: 5px solid #f59e0b;
+            color: #92400e;
+            padding: 14px 18px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+        .alerta-exito {
+            background-color: #ecfdf5;
+            border-left: 5px solid #10b981;
+            color: #065f46;
+            padding: 14px 18px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% elif rol == 'rectoria' %}rol-rectoria{% endif %}">{{ 'Rectoría' if rol == 'rectoria' else rol|capitalize }}</span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ 'Rector' if rol == 'rectoria' else rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>📝 Registro de Inasistencia {% if rol == 'rectoria' %}(Modo Consulta / Solo Lectura){% endif %}</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('docente') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% elif rol == 'rectoria' %}
+                    <a href="{{ url_for('rectoria') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% endif %}
+            </div>
+
+            {% if rol == 'rectoria' %}
+                <div class="alerta" style="background-color: #f3e8ff; border: 1px solid #c084fc; color: #6b21a8; margin-bottom: 20px;">
+                    <strong>ℹ️ Modo Solo Lectura (Rectoría):</strong> Puede consultar los estudiantes y el estado de inasistencias. El rol de Rectoría no puede registrar ni modificar inasistencias.
+                </div>
+            {% endif %}
+
+            <!-- ALERTAS Y MENSAJES -->
+            {% if error %}
+                <div class="alerta error" style="margin-bottom: 20px;">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+
+            {% if aviso %}
+                <div class="alerta-aviso">
+                    <strong>⚠️ Advertencia:</strong> {{ aviso }}
+                </div>
+            {% endif %}
+
+            {% if mensaje %}
+                <div class="alerta-exito">
+                    <strong>✓ Confirmación:</strong> {{ mensaje }}
+                </div>
+            {% endif %}
+
+            <!-- 1. SELECCIÓN ACADÉMICA -->
+            <div class="tarjeta-filtro">
+                <h3>1. Selección Académica</h3>
+                <form method="GET" action="{{ url_for('registro_inasistencia') }}" id="formSeleccion" class="formulario-filtro formulario-seleccion-academica">
+                    <input type="hidden" name="cargar" value="1">
+
+                    <!-- PRIMERA FILA: Grado, Grupo, Jornada -->
+                    <div class="fila-seleccion fila-tres-col">
+                        <!-- GRADO -->
+                        <div class="grupo-filtro">
+                            <label for="gradoSelect">Grado:</label>
+                            <select name="grado" id="gradoSelect" required onchange="actualizarDependenciasGrado()">
+                                <option value="">-- Seleccionar Grado --</option>
+                                {% for g in grados %}
+                                    <option value="{{ g.Gra_Codigo }}" {% if grado_seleccionado == g.Gra_Codigo|string %}selected{% endif %}>
+                                        {% if g.Gra_Codigo == 0 %}Transición{% else %}Grado {{ g.Gra_NombreGrado }}{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- GRUPO -->
+                        <div class="grupo-filtro">
+                            <label for="grupoSelect">Grupo:</label>
+                            <select name="grupo" id="grupoSelect" required onchange="actualizarEstudiantes()">
+                                <option value="">-- Seleccionar Grupo --</option>
+                                {% for gr in grupos %}
+                                    <option value="{{ gr.Gru_Codigo }}" {% if grupo_seleccionado == gr.Gru_Codigo|string %}selected{% endif %}>
+                                        {{ gr.Gru_NombreGrupo }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- JORNADA -->
+                        <div class="grupo-filtro">
+                            <label for="jornadaSelect">Jornada:</label>
+                            <select name="jornada" id="jornadaSelect" required>
+                                <option value="">-- Seleccionar Jornada --</option>
+                                {% for j in jornadas %}
+                                    <option value="{{ j }}" {% if jornada_seleccionada == j %}selected{% endif %}>{{ j }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SEGUNDA FILA: Modalidad (10 y 11), Asignatura -->
+                    <div class="fila-seleccion fila-dos-col" id="filaModalidadAsignatura">
+                        <!-- MODALIDAD CONDICIONAL PARA 10 Y 11 -->
+                        <div class="grupo-filtro" id="cajaModalidad" style="display: {% if grado_seleccionado in ['10', '11'] %}flex{% else %}none{% endif %};">
+                            <label for="modalidadSelect">Modalidad (10 y 11):</label>
+                            <select name="modalidad" id="modalidadSelect" onchange="actualizarAsignaturas()">
+                                {% for m in modalidades %}
+                                    <option value="{{ m }}" {% if modalidad_seleccionada == m %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- ASIGNATURA -->
+                        <div class="grupo-filtro" id="cajaAsignatura" style="{% if grado_seleccionado not in ['10', '11'] %}grid-column: 1 / -1;{% endif %}">
+                            <label for="asignaturaSelect">Asignatura:</label>
+                            <select name="asignatura" id="asignaturaSelect" required>
+                                <option value="">-- Seleccionar Asignatura --</option>
+                                {% for a in asignaturas %}
+                                    <option value="{{ a }}" {% if asignatura_seleccionada == a %}selected{% endif %}>{{ a }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- TERCERA FILA: Sede, Fecha de Registro, Nombre del estudiante, Cargar Estudiantes -->
+                    <div class="fila-seleccion fila-cuatro-col">
+                        <!-- SEDE -->
+                        <div class="grupo-filtro">
+                            <label for="sedeSelect">Sede:</label>
+                            <select name="sede" id="sedeSelect" required>
+                                <option value="">-- Seleccionar Sede --</option>
+                                {% for s in sedes %}
+                                    <option value="{{ s }}" {% if sede_seleccionada == s %}selected{% endif %}>{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- FECHA -->
+                        <div class="grupo-filtro">
+                            <label for="fechaSelect">Fecha de Registro:</label>
+                            <input type="date" name="fecha" id="fechaSelect" value="{{ fecha_seleccionada }}" required>
+                        </div>
+
+                        <!-- NOMBRE DEL ESTUDIANTE -->
+                        <div class="grupo-filtro grupo-filtro-estudiante">
+                            <label for="estudianteSelect">Nombre del estudiante:</label>
+                            <select name="estudiante" id="estudianteSelect">
+                                <option value="">-- Seleccionar Estudiante --</option>
+                                {% if lista_estudiantes_filtro and lista_estudiantes_filtro|length > 0 %}
+                                    <option value="todos" {% if estudiante_seleccionado == 'todos' or not estudiante_seleccionado %}selected{% endif %}>-- Todos los Estudiantes ({{ lista_estudiantes_filtro|length }}) --</option>
+                                    {% for est in lista_estudiantes_filtro %}
+                                        <option value="{{ est.Est_CodEstudiante }}" {% if estudiante_seleccionado == est.Est_CodEstudiante|string %}selected{% endif %}>
+                                            {{ est.Est_Apellido }}, {{ est.Est_Nombre }}
+                                        </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <!-- BOTÓN CARGAR ESTUDIANTES -->
+                        <div class="grupo-filtro grupo-filtro-boton">
+                            <label class="label-espaciador">&nbsp;</label>
+                            <button type="submit" class="btn-filtrar btn-cargar-estudiantes" id="btnCargarEstudiantes">🔍 Cargar Estudiantes</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 2. CONTROL DIARIO DE INASISTENCIAS (MATRIZ VISUAL) -->
+            {% if estudiantes is not none %}
+                <div class="tarjeta-asistencia">
+                    <div class="encabezado-seccion-asistencia">
+                        <h3>2. Control Diario de Inasistencias (Matriz Visual)</h3>
+                    </div>
+
+                    <!-- RESUMEN DE LA SESIÓN -->
+                    <div class="tarjeta-resumen-sesion" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 5px solid #8E5BB7; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 1rem;">📋 Parámetros Académicos Seleccionados:</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; font-size: 0.92rem; color: #334155;">
+                            <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">GRADO</span><strong>Grado {{ grado_seleccionado }}</strong></div>
+                            <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">GRUPO</span><strong>{{ grupo_nombre_sel or grupo_seleccionado }}</strong></div>
+                            <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">JORNADA</span><strong style="color: #8E5BB7;">{{ jornada_seleccionada }}</strong></div>
+                            <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">ASIGNATURA</span><strong style="color: #0284c7;">{{ asignatura_seleccionada }}</strong> {% if grado_seleccionado in ['10', '11'] %}<small style="color: #64748b;">({{ modalidad_seleccionada }})</small>{% endif %}</div>
+                            <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">SEDE</span><strong style="color: #10b981;">{{ sede_seleccionada }}</strong></div>
+                            <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">FECHA</span><strong style="color: #dc2626;">{{ fecha_seleccionada }}</strong></div>
+                        </div>
+                    </div>
+
+                    {% if estudiantes|length > 0 %}
+                        <form method="POST" action="{{ url_for('guardar_inasistencia') }}" id="formGuardarInasistencia">
+                            <input type="hidden" name="grado_id" value="{{ grado_seleccionado }}">
+                            <input type="hidden" name="grupo_id" value="{{ grupo_seleccionado }}">
+                            <input type="hidden" name="jornada_id" value="{{ jornada_seleccionada }}">
+                            <input type="hidden" name="asignatura_nombre" value="{{ asignatura_seleccionada }}">
+                            <input type="hidden" name="sede_nombre" value="{{ sede_seleccionada }}">
+                            <input type="hidden" name="modalidad_id" value="{{ modalidad_seleccionada }}">
+                            <input type="hidden" name="fecha_registro" value="{{ fecha_seleccionada }}">
+
+                            <!-- BARRA DE ACCIONES RÁPIDAS -->
+                            <div class="barra-herramientas-matriz">
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="btn-limpiar" onclick="marcarTodos(true)">✓ Marcar Todos</button>
+                                    <button type="button" class="btn-limpiar" onclick="marcarTodos(false)">✗ Desmarcar Todos</button>
+                                </div>
+                                <div style="font-size: 0.92rem; color: #475569;">
+                                    Total estudiantes: <strong>{{ estudiantes|length }}</strong> | 
+                                    Inasistentes seleccionados: <strong id="contadorInasistentes" style="color: #dc2626;">0</strong>
+                                </div>
+                            </div>
+
+                            <div class="contenedor-tabla-scroll">
+                                <table class="tabla-matriz-inasistencia">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50px; text-align: center;">No.</th>
+                                            <th style="width: 90px; text-align: center;">Código</th>
+                                            <th>Nombre del estudiante</th>
+                                            <th style="width: 150px; text-align: center;">Inasistencia</th>
+                                            <th style="width: 140px; text-align: center;">Estado en Fecha</th>
+                                            <th>Observación (Opcional)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for est in estudiantes %}
+                                        <tr id="fila_{{ est.Est_CodEstudiante }}" {% if est.tiene_inasistencia %}class="fila-inasistente-activa"{% endif %}>
+                                            <td style="text-align: center; font-weight: 600; color: #64748b;">{{ loop.index }}</td>
+                                            <td style="text-align: center;"><code>{{ est.Est_CodEstudiante }}</code></td>
+                                            <td><strong>{{ est.Est_Apellido }}, {{ est.Est_Nombre }}</strong></td>
+                                            <td style="text-align: center;">
+                                                <label class="chk-caja">
+                                                    <input type="checkbox" name="inasistentes" value="{{ est.Est_CodEstudiante }}" class="chk-inasistencia" onchange="actualizarFilaEstado(this, '{{ est.Est_CodEstudiante }}')">
+                                                    <span style="color: #dc2626;">Marcar Ausente</span>
+                                                </label>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                {% if est.estado_actual %}
+                                                    {% if 'ausente' in est.estado_actual|lower %}
+                                                        <span class="insignia-estado estado-ausente">Ausente</span>
+                                                    {% elif 'presente' in est.estado_actual|lower %}
+                                                        <span class="insignia-estado estado-presente">Presente</span>
+                                                    {% elif 'tarde' in est.estado_actual|lower %}
+                                                        <span class="insignia-estado estado-tarde">Tarde</span>
+                                                    {% else %}
+                                                        <span class="insignia-estado">{{ est.estado_actual }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span style="color: #94a3b8; font-size: 0.85rem;">— Sin registro —</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <input type="text" name="obs_{{ est.Est_CodEstudiante }}" value="{{ est.obs_existente or '' }}" placeholder="Ej. Excusa médica, permiso..." class="input-obs">
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style="display: flex; gap: 14px; margin-top: 24px; align-items: center;">
+                                {% if rol == 'rectoria' %}
+                                    <button type="button" class="btn-guardar" disabled style="opacity: 0.6; cursor: not-allowed; background-color: #94a3b8;" title="Modo Solo Lectura: Rectoría no puede guardar inasistencias">🔒 Solo Lectura (Rectoría)</button>
+                                    <a href="{{ url_for('rectoria') }}" class="btn-cancelar">Volver al Menú</a>
+                                {% else %}
+                                    <button type="submit" class="btn-guardar" id="btnGuardarInasistencias">💾 Guardar inasistencias</button>
+                                    {% if rol == 'docente' %}
+                                        <a href="{{ url_for('docente') }}" class="btn-cancelar">Cancelar y Volver</a>
+                                    {% else %}
+                                        <a href="{{ url_for('coordinador') }}" class="btn-cancelar">Cancelar y Volver</a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </form>
+                    {% else %}
+                        <p style="color: #64748b; padding: 20px 0;">ℹ️ No se encontraron estudiantes registrados para los criterios seleccionados.</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+
+    <script>
+    function actualizarDependenciasGrado() {
+        const grado = document.getElementById('gradoSelect').value;
+        const cajaMod = document.getElementById('cajaModalidad');
+        const cajaAsig = document.getElementById('cajaAsignatura');
+        if (grado === '10' || grado === '11') {
+            if (cajaMod) cajaMod.style.display = 'flex';
+            if (cajaAsig) cajaAsig.style.gridColumn = 'auto';
+        } else {
+            if (cajaMod) cajaMod.style.display = 'none';
+            if (cajaAsig) cajaAsig.style.gridColumn = '1 / -1';
+        }
+
+        fetch('/api/grupos_validos?grado=' + encodeURIComponent(grado))
+            .then(res => res.json())
+            .then(data => {
+                const grpSelect = document.getElementById('grupoSelect');
+                grpSelect.innerHTML = '<option value="">-- Seleccionar Grupo --</option>';
+                data.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g.id;
+                    opt.textContent = g.nombre;
+                    grpSelect.appendChild(opt);
+                });
+            })
+            .catch(err => console.error('Error grupos:', err));
+
+        actualizarAsignaturas();
+    }
+
+    function actualizarAsignaturas() {
+        const grado = document.getElementById('gradoSelect').value;
+        const modSelect = document.getElementById('modalidadSelect');
+        const modalidad = modSelect ? modSelect.value : 'General';
+
+        fetch('/api/asignaturas_validas?grado=' + encodeURIComponent(grado) + '&modalidad=' + encodeURIComponent(modalidad))
+            .then(res => res.json())
+            .then(data => {
+                const asigSelect = document.getElementById('asignaturaSelect');
+                asigSelect.innerHTML = '<option value="">-- Seleccionar Asignatura --</option>';
+                data.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.nombre;
+                    opt.textContent = a.nombre;
+                    asigSelect.appendChild(opt);
+                });
+            })
+            .catch(err => console.error('Error asignaturas:', err));
+    }
+
+    function actualizarFilaEstado(chk, estId) {
+        const fila = document.getElementById('fila_' + estId);
+        if (fila) {
+            if (chk.checked) {
+                fila.classList.add('fila-inasistente-activa');
+            } else {
+                fila.classList.remove('fila-inasistente-activa');
+            }
+        }
+        actualizarContador();
+    }
+
+    function marcarTodos(estado) {
+        const checkboxes = document.querySelectorAll('.chk-inasistencia');
+        checkboxes.forEach(chk => {
+            chk.checked = estado;
+            const fila = chk.closest('tr');
+            if (fila) {
+                if (estado) {
+                    fila.classList.add('fila-inasistente-activa');
+                } else {
+                    fila.classList.remove('fila-inasistente-activa');
+                }
+            }
+        });
+        actualizarContador();
+    }
+
+    function actualizarContador() {
+        const total = document.querySelectorAll('.chk-inasistencia:checked').length;
+        const cont = document.getElementById('contadorInasistentes');
+        if (cont) {
+            cont.textContent = total;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        actualizarContador();
+        const gradoEl = document.getElementById('gradoSelect');
+        if (gradoEl && gradoEl.value) {
+            const cajaMod = document.getElementById('cajaModalidad');
+            const cajaAsig = document.getElementById('cajaAsignatura');
+            if (gradoEl.value === '10' || gradoEl.value === '11') {
+                if (cajaMod) cajaMod.style.display = 'flex';
+                if (cajaAsig) cajaAsig.style.gridColumn = 'auto';
+            } else {
+                if (cajaMod) cajaMod.style.display = 'none';
+                if (cajaAsig) cajaAsig.style.gridColumn = '1 / -1';
+            }
+        }
+    });
+    
+    function actualizarEstudiantes(valorPreseleccionado) {
+        const grado = document.getElementById('gradoSelect') ? document.getElementById('gradoSelect').value.trim() : '';
+        const grupo = document.getElementById('grupoSelect') ? document.getElementById('grupoSelect').value.trim() : '';
+        const estSelect = document.getElementById('estudianteSelect');
+        if (!estSelect) return;
+
+        if (!grado || !grupo) {
+            estSelect.innerHTML = '<option value="">-- Seleccionar Estudiante --</option>';
+            return;
+        }
+
+        const url = '/api/estudiantes_validos?grado=' + encodeURIComponent(grado) + '&grupo=' + encodeURIComponent(grupo);
+
+        fetch(url)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                const valActual = valorPreseleccionado || estSelect.value;
+                estSelect.innerHTML = '<option value="">-- Seleccionar Estudiante --</option>';
+                if (Array.isArray(data) && data.length > 0) {
+                    const optTodos = document.createElement('option');
+                    optTodos.value = 'todos';
+                    optTodos.textContent = '-- Todos los Estudiantes (' + data.length + ') --';
+                    if (valActual === 'todos' || !valActual) {
+                        optTodos.selected = true;
+                    }
+                    estSelect.appendChild(optTodos);
+
+                    data.forEach(function(est) {
+                        const opt = document.createElement('option');
+                        opt.value = est.id;
+                        opt.textContent = est.apellido + ', ' + est.nombre;
+                        if (String(est.id) === String(valActual)) {
+                            opt.selected = true;
+                        }
+                        estSelect.appendChild(opt);
+                    });
+                } else {
+                    const optVacio = document.createElement('option');
+                    optVacio.value = '';
+                    optVacio.disabled = true;
+                    optVacio.textContent = 'ℹ️ No hay estudiantes para esta selección';
+                    estSelect.appendChild(optVacio);
+                }
+            })
+            .catch(function(err) { console.error('Error cargando estudiantes:', err); });
+    }
+
+</script>
+</body>
+</html>

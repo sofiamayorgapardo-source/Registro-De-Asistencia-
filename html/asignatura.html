@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Catálogo de Asignaturas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% endif %}">
+                    {{ rol|capitalize }}
+                </span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>📚 Catálogo de Asignaturas</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('panel_docente') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% endif %}
+            </div>
+
+            <!-- TARJETAS DE RESUMEN DE ASIGNATURAS -->
+            <div class="tarjeta-resumen-metricas">
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Total Asignaturas</span>
+                    <span class="metrica-valor">{{ asignaturas|length }}</span>
+                </div>
+                <div class="metrica-item metrica-presente">
+                    <span class="metrica-titulo">Áreas Curriculares</span>
+                    <span class="metrica-valor">{{ asignaturas|length }}</span>
+                </div>
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Estado Curricular</span>
+                    <span class="metrica-valor" style="font-size: 1.2rem; color: #198754; margin-top: 10px;">Vigente en MySQL</span>
+                </div>
+            </div>
+
+            <!-- TABLA DE ASIGNATURAS -->
+            <div class="tarjeta-asistencia">
+                <h3>Asignaturas Registradas en la Base de Datos (`asignatura`)</h3>
+                
+                {% if asignaturas and asignaturas|length > 0 %}
+                    <div class="contenedor-tabla-scroll">
+                        <table class="tabla-asistencia">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre de la Asignatura</th>
+                                    <th>Docentes Vinculados</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in asignaturas %}
+                                <tr>
+                                    <td><code>{{ a.Asi_CodAsignatura }}</code></td>
+                                    <td><strong>{{ a.Asi_NomAsignatura }}</strong></td>
+                                    <td>
+                                        {% if a.total_docentes > 0 %}
+                                            <span style="color: #198754; font-weight: bold;">{{ a.total_docentes }} docente(s) asignado(s)</span>
+                                        {% else %}
+                                            <span style="color: #666666;">Sin docente asignado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="insignia-estado estado-presente">Activa</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alerta-vacia">
+                        <p>No se encontraron asignaturas registradas en la base de datos.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

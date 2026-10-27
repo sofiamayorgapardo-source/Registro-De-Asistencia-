@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Crear Cuenta</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .contenedor-login {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 15px;
+            box-sizing: border-box;
+        }
+        .tarjeta-login {
+            max-width: 520px;
+            width: 100%;
+            margin: auto;
+            box-sizing: border-box;
+        }
+        .seccion-titulo {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #8E5BB7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #f1e8f9;
+            padding-bottom: 6px;
+            margin: 20px 0 14px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .caja-radios {
+            display: flex;
+            gap: 20px;
+            margin-top: 6px;
+            margin-bottom: 4px;
+        }
+        .radio-opcion {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: #334155;
+        }
+        .radio-opcion input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #8E5BB7;
+            cursor: pointer;
+            margin: 0;
+        }
+        .lista-seleccion-scroll {
+            max-height: 140px;
+            overflow-y: auto;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 8px 12px;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .item-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.88rem;
+            color: #1e293b;
+            cursor: pointer;
+            padding: 2px 0;
+        }
+        .item-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #8E5BB7;
+            cursor: pointer;
+            margin: 0;
+        }
+        .item-checkbox.deshabilitado {
+            color: #94a3b8;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+    </style>
+</head>
+<body>
+    <div class="contenedor-login">
+        <div class="tarjeta-login">
+            <div class="encabezado-login">
+                <div class="contenedor-escudo-colegio">
+                    <img src="{{ url_for('static', filename='escudo.png') }}" alt="Escudo Institución Educativa" class="escudo-colegio">
+                </div>
+                <h1>ASISTEC</h1>
+                <p style="font-weight: 700; color: #1e293b; font-size: 1.15rem; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;">CREAR CUENTA</p>
+                <p style="color: #64748b; font-size: 0.88rem; margin-top: 2px;">Registro de cuentas individuales institucionales</p>
+            </div>
+
+            {% if error %}
+                <div class="alerta error" style="margin-bottom: 16px;">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+
+            {% if exito %}
+                <div class="alerta exito" style="background-color: #ecfdf5; border-left: 4px solid #10b981; color: #065f46; padding: 12px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 0.9rem;">
+                    <strong>Éxito:</strong> {{ exito }}
+                </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('crear_cuenta') }}" class="formulario-login" id="form_crear_cuenta">
+                <!-- SELECCIÓN PRINCIPAL DE ROL -->
+                <div class="grupo-campo">
+                    <label for="tipo_usuario">Tipo de usuario: <span style="color: #ef4444;">*</span></label>
+                    <select id="tipo_usuario" name="tipo_usuario" required onchange="actualizarInterfaz()" style="width: 100%; padding: 11px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background-color: #ffffff; color: #1e293b; font-weight: 600;">
+                        <option value="docente" {% if form_data and form_data.tipo_usuario == 'docente' %}selected{% endif %}>Docente</option>
+                        <option value="coordinador" {% if form_data and form_data.tipo_usuario == 'coordinador' %}selected{% endif %}>Coordinador</option>
+                    </select>
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- SECCIÓN 1: DATOS PERSONALES -->
+                <!-- ========================================================= -->
+                <div class="seccion-titulo">
+                    👤 DATOS PERSONALES
+                </div>
+
+                <div class="grupo-campo">
+                    <label for="nombre_completo">Nombre completo: <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="nombre_completo" name="nombre_completo" required 
+                           placeholder="Ej: Carlos Andrés Pérez" 
+                           value="{{ form_data.nombre_completo if form_data else '' }}"
+                           style="width: 100%; box-sizing: border-box;">
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- SECCIÓN 2: INFORMACIÓN ACADÉMICA (SOLO DOCENTE) -->
+                <!-- ========================================================= -->
+                <div id="bloque_academico" style="display: block;">
+                    <div class="seccion-titulo">
+                        📚 INFORMACIÓN ACADÉMICA
+                    </div>
+
+                    <!-- 1. ¿DICTA EN MÁS DE UN ÁREA? -->
+                    <div class="grupo-campo">
+                        <label>¿Dicta en más de un área? <span style="color: #ef4444;">*</span></label>
+                        <div class="caja-radios">
+                            <label class="radio-opcion">
+                                <input type="radio" name="dicta_mas_areas" value="no" onchange="toggleAreasAdicionales()" 
+                                       {% if not form_data or form_data.dicta_mas_areas != 'si' %}checked{% endif %}>
+                                No
+                            </label>
+                            <label class="radio-opcion">
+                                <input type="radio" name="dicta_mas_areas" value="si" onchange="toggleAreasAdicionales()"
+                                       {% if form_data and form_data.dicta_mas_areas == 'si' %}checked{% endif %}>
+                                Sí
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 2. ÁREA PRINCIPAL -->
+                    <div class="grupo-campo">
+                        <label for="area_principal">Área principal: <span style="color: #ef4444;">*</span></label>
+                        <select id="area_principal" name="area_principal" onchange="actualizarAreasYJefatura()" style="width: 100%; padding: 11px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background-color: #ffffff; color: #1e293b;">
+                            <option value="">-- Seleccionar área --</option>
+                            {% for asig in asignaturas %}
+                                <option value="{{ asig.Asi_CodAsignatura }}" data-nombre="{{ asig.Asi_NomAsignatura }}"
+                                        {% if form_data and form_data.area_principal|string == asig.Asi_CodAsignatura|string %}selected{% endif %}>
+                                    {{ asig.Asi_NomAsignatura }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 3. ÁREAS ADICIONALES (DINÁMICO) -->
+                    <div class="grupo-campo" id="caja_areas_adicionales" style="display: none;">
+                        <label>Áreas adicionales: <small style="color: #64748b; font-weight: normal;">(Seleccionar una o varias)</small></label>
+                        <div class="lista-seleccion-scroll" id="contenedor_areas_adicionales">
+                            {% for asig in asignaturas %}
+                                <label class="item-checkbox" id="item_area_{{ asig.Asi_CodAsignatura }}">
+                                    <input type="checkbox" name="areas_adicionales" value="{{ asig.Asi_CodAsignatura }}" data-nombre="{{ asig.Asi_NomAsignatura }}" onchange="actualizarOpcionesJefeArea()"
+                                           {% if form_data and asig.Asi_CodAsignatura|string in form_data.areas_adicionales %}checked{% endif %}>
+                                    <span>{{ asig.Asi_NomAsignatura }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 4px; display: block;">No se puede repetir el área principal.</small>
+                    </div>
+
+                    <!-- 4. ASIGNATURA PRINCIPAL -->
+                    <div class="grupo-campo">
+                        <label for="asignatura_principal">Asignatura principal: <span style="color: #ef4444;">*</span></label>
+                        <select id="asignatura_principal" name="asignatura_principal" onchange="actualizarOtrasAsignaturas()" style="width: 100%; padding: 11px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background-color: #ffffff; color: #1e293b;">
+                            <option value="">-- Seleccionar asignatura --</option>
+                            {% for asig in asignaturas %}
+                                <option value="{{ asig.Asi_CodAsignatura }}" data-nombre="{{ asig.Asi_NomAsignatura }}"
+                                        {% if form_data and form_data.asignatura_principal|string == asig.Asi_CodAsignatura|string %}selected{% endif %}>
+                                    {{ asig.Asi_NomAsignatura }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 5. OTRAS ASIGNATURAS QUE DICTA -->
+                    <div class="grupo-campo" id="caja_otras_asignaturas">
+                        <label>Otras asignaturas que dicta: <small style="color: #64748b; font-weight: normal;">(Opcional, una o varias)</small></label>
+                        <div class="lista-seleccion-scroll" id="contenedor_otras_asignaturas">
+                            {% for asig in asignaturas %}
+                                <label class="item-checkbox" id="item_asig_{{ asig.Asi_CodAsignatura }}">
+                                    <input type="checkbox" name="otras_asignaturas" value="{{ asig.Asi_CodAsignatura }}" data-nombre="{{ asig.Asi_NomAsignatura }}"
+                                           {% if form_data and asig.Asi_CodAsignatura|string in form_data.otras_asignaturas %}checked{% endif %}>
+                                    <span>{{ asig.Asi_NomAsignatura }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 4px; display: block;">La asignatura principal no puede repetirse aquí.</small>
+                    </div>
+
+                    <!-- 6. ¿ES JEFE DE ÁREA? -->
+                    <div class="grupo-campo">
+                        <label>¿Es jefe de área? <span style="color: #ef4444;">*</span></label>
+                        <div class="caja-radios">
+                            <label class="radio-opcion">
+                                <input type="radio" name="es_jefe" value="no" onchange="toggleJefeArea()"
+                                       {% if not form_data or form_data.es_jefe != 'si' %}checked{% endif %}>
+                                No
+                            </label>
+                            <label class="radio-opcion">
+                                <input type="radio" name="es_jefe" value="si" onchange="toggleJefeArea()"
+                                       {% if form_data and form_data.es_jefe == 'si' %}checked{% endif %}>
+                                Sí
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 7. ÁREA DE LA QUE ES JEFE (DINÁMICO) -->
+                    <div class="grupo-campo" id="caja_jefe_area" style="display: none;">
+                        <label for="area_jefe">Área de la que es jefe: <span style="color: #ef4444;">*</span></label>
+                        <select id="area_jefe" name="area_jefe" style="width: 100%; padding: 11px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background-color: #ffffff; color: #1e293b;">
+                            <option value="">-- Seleccionar área que dirige --</option>
+                        </select>
+                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 4px; display: block;">Solo se muestran las áreas asignadas al docente.</small>
+                    </div>
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- SECCIÓN ESPECIAL COORDINADOR: AUTORIZACIÓN -->
+                <!-- ========================================================= -->
+                <div class="grupo-campo" id="caja_autorizacion" style="display: none; background: #fffbeb; border: 1px solid #fef3c7; padding: 14px; border-radius: 8px; margin-top: 14px;">
+                    <label for="clave_autorizacion" style="color: #92400e; font-weight: 600;">Clave de Autorización de Coordinación: <span style="color: #ef4444;">*</span></label>
+                    <input type="password" id="clave_autorizacion" name="clave_autorizacion" 
+                           placeholder="Ingresa la clave institucional de coordinación"
+                           style="width: 100%; box-sizing: border-box; border-color: #fcd34d; margin-top: 4px;">
+                    <small style="color: #b45309; font-size: 0.8rem; margin-top: 4px; display: block;">⚠️ Se requiere autorización previa de Coordinación para registrar cuentas administrativas.</small>
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- SECCIÓN 3: CREDENCIALES DE ACCESO -->
+                <!-- ========================================================= -->
+                <div class="seccion-titulo">
+                    🔒 CREDENCIALES DE ACCESO
+                </div>
+
+                <div class="grupo-campo">
+                    <label for="usuario">Usuario: <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="usuario" name="usuario" required 
+                           placeholder="Ej: carlos.perez" 
+                           value="{{ form_data.usuario if form_data else '' }}"
+                           autocomplete="off"
+                           style="width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div class="grupo-campo">
+                    <label for="password">Contraseña: <span style="color: #ef4444;">*</span></label>
+                    <input type="password" id="password" name="password" required 
+                           placeholder="Ingresa tu contraseña"
+                           autocomplete="new-password"
+                           style="width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div class="grupo-campo">
+                    <label for="confirmar_password">Confirmar contraseña: <span style="color: #ef4444;">*</span></label>
+                    <input type="password" id="confirmar_password" name="confirmar_password" required 
+                           placeholder="Repite tu contraseña"
+                           autocomplete="new-password"
+                           style="width: 100%; box-sizing: border-box;">
+                </div>
+
+                <button type="submit" class="btn-ingresar" style="margin-top: 16px;">Crear cuenta</button>
+                <a href="{{ url_for('login') }}" class="btn-cancelar" style="display: flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; text-align: center; margin-top: 10px; font-weight: 600;">⬅ Volver</a>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function actualizarInterfaz() {
+            const tipo = document.getElementById('tipo_usuario').value;
+            const bloqueAcademico = document.getElementById('bloque_academico');
+            const cajaAutorizacion = document.getElementById('caja_autorizacion');
+            const claveAutorizacion = document.getElementById('clave_autorizacion');
+
+            const areaPrincipal = document.getElementById('area_principal');
+            const asigPrincipal = document.getElementById('asignatura_principal');
+
+            if (tipo === 'coordinador') {
+                bloqueAcademico.style.display = 'none';
+                areaPrincipal.required = false;
+                asigPrincipal.required = false;
+
+                cajaAutorizacion.style.display = 'block';
+                claveAutorizacion.required = true;
+            } else {
+                bloqueAcademico.style.display = 'block';
+                areaPrincipal.required = true;
+                asigPrincipal.required = true;
+
+                cajaAutorizacion.style.display = 'none';
+                claveAutorizacion.required = false;
+
+                toggleAreasAdicionales();
+                toggleJefeArea();
+                actualizarAreasYJefatura();
+                actualizarOtrasAsignaturas();
+            }
+        }
+
+        function toggleAreasAdicionales() {
+            const dictaMas = document.querySelector('input[name="dicta_mas_areas"]:checked');
+            const cajaAdicionales = document.getElementById('caja_areas_adicionales');
+            if (dictaMas && dictaMas.value === 'si') {
+                cajaAdicionales.style.display = 'block';
+            } else {
+                cajaAdicionales.style.display = 'none';
+                // Desmarcar checkboxes de adicionales
+                document.querySelectorAll('input[name="areas_adicionales"]').forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+            actualizarOpcionesJefeArea();
+        }
+
+        function toggleJefeArea() {
+            const esJefe = document.querySelector('input[name="es_jefe"]:checked');
+            const cajaJefe = document.getElementById('caja_jefe_area');
+            const selectJefe = document.getElementById('area_jefe');
+            if (esJefe && esJefe.value === 'si') {
+                cajaJefe.style.display = 'block';
+                selectJefe.required = true;
+                actualizarOpcionesJefeArea();
+            } else {
+                cajaJefe.style.display = 'none';
+                selectJefe.required = false;
+            }
+        }
+
+        function actualizarAreasYJefatura() {
+            const areaPrincSelect = document.getElementById('area_principal');
+            const areaPrincVal = areaPrincSelect.value;
+
+            // Deshabilitar el área principal en la lista de áreas adicionales para evitar duplicados
+            document.querySelectorAll('#contenedor_areas_adicionales input[name="areas_adicionales"]').forEach(cb => {
+                const itemLabel = cb.closest('.item-checkbox');
+                if (cb.value === areaPrincVal) {
+                    cb.checked = false;
+                    cb.disabled = true;
+                    if (itemLabel) itemLabel.classList.add('deshabilitado');
+                } else {
+                    cb.disabled = false;
+                    if (itemLabel) itemLabel.classList.remove('deshabilitado');
+                }
+            });
+
+            actualizarOpcionesJefeArea();
+        }
+
+        function actualizarOpcionesJefeArea() {
+            const selectJefe = document.getElementById('area_jefe');
+            const valorActual = selectJefe.value;
+            selectJefe.innerHTML = '<option value="">-- Seleccionar área que dirige --</option>';
+
+            const areasDocente = [];
+
+            // Área principal
+            const areaPrincSelect = document.getElementById('area_principal');
+            if (areaPrincSelect.value) {
+                const optPrinc = areaPrincSelect.options[areaPrincSelect.selectedIndex];
+                areasDocente.push({ id: areaPrincSelect.value, nombre: optPrinc.text });
+            }
+
+            // Áreas adicionales seleccionadas
+            const dictaMas = document.querySelector('input[name="dicta_mas_areas"]:checked');
+            if (dictaMas && dictaMas.value === 'si') {
+                document.querySelectorAll('input[name="areas_adicionales"]:checked').forEach(cb => {
+                    areasDocente.push({ id: cb.value, nombre: cb.dataset.nombre });
+                });
+            }
+
+            areasDocente.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = a.nombre;
+                if (a.id === valorActual) {
+                    opt.selected = true;
+                }
+                selectJefe.appendChild(opt);
+            });
+        }
+
+        function actualizarOtrasAsignaturas() {
+            const asigPrincSelect = document.getElementById('asignatura_principal');
+            const asigPrincVal = asigPrincSelect.value;
+
+            // Deshabilitar la asignatura principal en la lista de otras asignaturas
+            document.querySelectorAll('#contenedor_otras_asignaturas input[name="otras_asignaturas"]').forEach(cb => {
+                const itemLabel = cb.closest('.item-checkbox');
+                if (cb.value === asigPrincVal) {
+                    cb.checked = false;
+                    cb.disabled = true;
+                    if (itemLabel) itemLabel.classList.add('deshabilitado');
+                } else {
+                    cb.disabled = false;
+                    if (itemLabel) itemLabel.classList.remove('deshabilitado');
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            actualizarInterfaz();
+        });
+    </script>
+</body>
+</html>

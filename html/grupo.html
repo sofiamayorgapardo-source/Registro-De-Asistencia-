@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Catálogo de Grupos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% endif %}">
+                    {{ rol|capitalize }}
+                </span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>👥 Catálogo de Grupos</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('panel_docente') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% endif %}
+            </div>
+
+            <!-- TARJETAS DE RESUMEN DE GRUPOS -->
+            <div class="tarjeta-resumen-metricas">
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Total Grupos</span>
+                    <span class="metrica-valor">{{ grupos|length }}</span>
+                </div>
+                <div class="metrica-item metrica-presente">
+                    <span class="metrica-titulo">Estudiantes en Grupos</span>
+                    <span class="metrica-valor">{{ total_estudiantes }}</span>
+                </div>
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Estado del Catálogo</span>
+                    <span class="metrica-valor" style="font-size: 1.2rem; color: #198754; margin-top: 10px;">Activo en MySQL</span>
+                </div>
+            </div>
+
+            <!-- TABLA DE GRUPOS -->
+            <div class="tarjeta-asistencia">
+                <h3>Grupos Registrados en la Base de Datos (`grupo`)</h3>
+                
+                {% if grupos and grupos|length > 0 %}
+                    <div class="contenedor-tabla-scroll">
+                        <table class="tabla-asistencia">
+                            <thead>
+                                <tr>
+                                    <th>Código de Grupo</th>
+                                    <th>Nombre del Grupo</th>
+                                    <th style="text-align: right;">Estudiantes Asignados</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for g in grupos %}
+                                <tr>
+                                    <td><code>{{ g.Gru_Codigo }}</code></td>
+                                    <td><strong>{{ g.Gru_NombreGrupo }}</strong></td>
+                                    <td style="text-align: right; font-weight: bold; color: #1e3c72;">{{ g.total_estudiantes }} estudiantes</td>
+                                    <td><span class="insignia-estado estado-presente">Activo</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alerta-vacia">
+                        <p>No se encontraron grupos registrados en la base de datos.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

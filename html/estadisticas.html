@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Estadísticas de Asistencia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% endif %}">
+                    {{ rol|capitalize }}
+                </span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>📈 Estadísticas de Asistencia {% if rol == 'docente' %}(Mis Registros){% else %}(Institucionales){% endif %}</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('panel_docente') }}" class="btn-volver">⬅ Volver al Panel</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Panel</a>
+                {% endif %}
+            </div>
+
+            <!-- TARJETA DE FILTROS -->
+            <div class="tarjeta-filtro">
+                <h3>Criterios de Análisis Estadístico</h3>
+                <form method="GET" action="{{ url_for('estadisticas') }}" class="formulario-filtro">
+                    <div class="grupo-filtro">
+                        <label for="fecha">Fecha:</label>
+                        <input type="date" id="fecha" name="fecha" value="{{ filtros.fecha if filtros else fecha_filtro }}">
+                    </div>
+
+                    <div class="grupo-filtro">
+                        <label for="grado">Grado:</label>
+                        <select name="grado" id="grado">
+                            <option value="">-- Todos los grados --</option>
+                            {% for g in grados %}
+                                <option value="{{ g.Gra_Codigo }}" {% if filtros and filtros.grado == g.Gra_Codigo|string %}selected{% endif %}>
+                                    {% if 'transici' in g.Gra_NombreGrado|lower or g.Gra_NombreGrado == '0' %}Transición{% else %}Grado {{ g.Gra_NombreGrado }}{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="grupo-filtro" id="contenedor-modalidad" style="{% if (filtros and filtros.grado in ['10', '11']) or (filtros and filtros.modalidad and filtros.modalidad != 'General') %}{% else %}display: none;{% endif %}">
+                        <label for="modalidad">Modalidad Técnica:</label>
+                        <select name="modalidad" id="modalidad">
+                            {% for m in modalidades %}
+                                <option value="{{ m }}" {% if filtros and filtros.modalidad == m %}selected{% endif %}>
+                                    {{ m }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="grupo-filtro">
+                        <label for="grupo">Grupo:</label>
+                        <select name="grupo" id="grupo">
+                            <option value="">-- Todos los grupos --</option>
+                            {% for gr in grupos %}
+                                <option value="{{ gr.Gru_Codigo }}" {% if filtros and filtros.grupo == gr.Gru_Codigo|string %}selected{% endif %}>
+                                    {{ gr.Gru_NombreGrupo }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="grupo-filtro">
+                        <label for="jornada">Jornada:</label>
+                        <select name="jornada" id="jornada">
+                            <option value="">-- Todas las jornadas --</option>
+                            {% for j in jornadas %}
+                                <option value="{{ j }}" {% if filtros and filtros.jornada == j %}selected{% endif %}>
+                                    Jornada {{ j }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {% if rol == 'coordinador' %}
+                    <div class="grupo-filtro">
+                        <label for="docente">Docente:</label>
+                        <select name="docente" id="docente">
+                            <option value="">-- Todos los docentes --</option>
+                            {% for d in docentes %}
+                                <option value="{{ d.Doc_CodDocentes }}" {% if filtros and filtros.docente == d.Doc_CodDocentes|string %}selected{% endif %}>
+                                    {{ d.Doc_Nombres }} {{ d.Doc_Apellidos }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="grupo-filtro">
+                        <label for="asignatura">Asignatura:</label>
+                        <select name="asignatura" id="asignatura">
+                            <option value="">-- Todas las asignaturas --</option>
+                            {% for a in asignaturas %}
+                                <option value="{{ a.Asi_CodAsignatura }}" {% if filtros and filtros.asignatura == a.Asi_CodAsignatura|string %}selected{% endif %}>
+                                    {{ a.Asi_NomAsignatura }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="grupo-filtro-botones">
+                        <button type="submit" class="btn-filtrar">🔍 Analizar Estadísticas</button>
+                        <a href="{{ url_for('estadisticas') }}" class="btn-limpiar">🔄 Ver Globales</a>
+                    </div>
+                </form>
+            </div>
+
+            {% if totales.total == 0 %}
+                <!-- MENSAJE CUANDO NO HAY REGISTROS -->
+                <div class="alerta error" style="margin-top: 10px;">
+                    <strong>ℹ️ Aviso:</strong> No hay registros de asistencia para esta fecha.
+                    <p style="margin-top: 5px; font-size: 0.9rem;">No hay registros para calcular porcentajes.</p>
+                </div>
+            {% endif %}
+
+            <!-- TARJETAS DE RESUMEN Y PORCENTAJES -->
+            <div class="tarjeta-resumen-metricas">
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Total Asistencias</span>
+                    <span class="metrica-valor">{{ totales.total }}</span>
+                    <span class="metrica-porcentaje">100% de los registros</span>
+                </div>
+                <div class="metrica-item metrica-presente">
+                    <span class="metrica-titulo">Presentes</span>
+                    <span class="metrica-valor">{{ totales.presentes }}</span>
+                    <span class="metrica-porcentaje">{% if totales.total > 0 %}{{ porcentajes.presentes }}%{% else %}0%{% endif %} del total</span>
+                </div>
+                <div class="metrica-item metrica-ausente">
+                    <span class="metrica-titulo">Ausentes</span>
+                    <span class="metrica-valor">{{ totales.ausentes }}</span>
+                    <span class="metrica-porcentaje">{% if totales.total > 0 %}{{ porcentajes.ausentes }}%{% else %}0%{% endif %} del total</span>
+                </div>
+                <div class="metrica-item metrica-tarde">
+                    <span class="metrica-titulo">Tardes</span>
+                    <span class="metrica-valor">{{ totales.tardes }}</span>
+                    <span class="metrica-porcentaje">{% if totales.total > 0 %}{{ porcentajes.tardes }}%{% else %}0%{% endif %} del total</span>
+                </div>
+            </div>
+
+            {% if totales.total > 0 %}
+                <!-- BARRA VISUAL DE DISTRIBUCIÓN (HTML + CSS PURO) -->
+                <div class="tarjeta-modulo">
+                    <h3>Distribución Porcentual de Asistencia</h3>
+                    <div class="barra-progreso-contenedor">
+                        <div class="barra-segmento segmento-presente" style="width: {{ porcentajes.presentes }}%;" title="Presentes: {{ porcentajes.presentes }}%">
+                            {% if porcentajes.presentes >= 10 %}{{ porcentajes.presentes }}%{% endif %}
+                        </div>
+                        <div class="barra-segmento segmento-ausente" style="width: {{ porcentajes.ausentes }}%;" title="Ausentes: {{ porcentajes.ausentes }}%">
+                            {% if porcentajes.ausentes >= 10 %}{{ porcentajes.ausentes }}%{% endif %}
+                        </div>
+                        <div class="barra-segmento segmento-tarde" style="width: {{ porcentajes.tardes }}%;" title="Tardes: {{ porcentajes.tardes }}%">
+                            {% if porcentajes.tardes >= 10 %}{{ porcentajes.tardes }}%{% endif %}
+                        </div>
+                    </div>
+                    <div class="leyenda-barra">
+                        <span><span class="punto-leyenda punto-presente"></span> Presentes ({{ porcentajes.presentes }}%)</span>
+                        <span><span class="punto-leyenda punto-ausente"></span> Ausentes ({{ porcentajes.ausentes }}%)</span>
+                        <span><span class="punto-leyenda punto-tarde"></span> Tardes ({{ porcentajes.tardes }}%)</span>
+                    </div>
+                </div>
+
+                <!-- RESUMEN POR GRADO -->
+                {% if estadisticas_grado and estadisticas_grado|length > 0 %}
+                <div class="tarjeta-modulo">
+                    <h3>Estadísticas por Grado</h3>
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th>Grado</th>
+                                <th style="text-align: right;">Presentes</th>
+                                <th style="text-align: right;">Ausentes</th>
+                                <th style="text-align: right;">Tardes</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for g in estadisticas_grado %}
+                            <tr>
+                                <td><strong>Grado {{ g.grado }}</strong></td>
+                                <td style="text-align: right; color: #198754; font-weight: bold;">{{ g.presentes }}</td>
+                                <td style="text-align: right; color: #dc3545; font-weight: bold;">{{ g.ausentes }}</td>
+                                <td style="text-align: right; color: #fd7e14; font-weight: bold;">{{ g.tardes }}</td>
+                                <td style="text-align: right; font-weight: bold;">{{ g.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- RESUMEN POR GRUPO -->
+                {% if estadisticas_grupo and estadisticas_grupo|length > 0 %}
+                <div class="tarjeta-modulo">
+                    <h3>Estadísticas por Grupo</h3>
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th>Grupo</th>
+                                <th style="text-align: right;">Presentes</th>
+                                <th style="text-align: right;">Ausentes</th>
+                                <th style="text-align: right;">Tardes</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for gr in estadisticas_grupo %}
+                            <tr>
+                                <td><strong>{{ gr.grupo }}</strong></td>
+                                <td style="text-align: right; color: #198754; font-weight: bold;">{{ gr.presentes }}</td>
+                                <td style="text-align: right; color: #dc3545; font-weight: bold;">{{ gr.ausentes }}</td>
+                                <td style="text-align: right; color: #fd7e14; font-weight: bold;">{{ gr.tardes }}</td>
+                                <td style="text-align: right; font-weight: bold;">{{ gr.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- RESUMEN POR ASIGNATURA -->
+                {% if estadisticas_asignatura and estadisticas_asignatura|length > 0 %}
+                <div class="tarjeta-modulo">
+                    <h3>Estadísticas por Asignatura</h3>
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th>Asignatura</th>
+                                <th style="text-align: right;">Presentes</th>
+                                <th style="text-align: right;">Ausentes</th>
+                                <th style="text-align: right;">Tardes</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in estadisticas_asignatura %}
+                            <tr>
+                                <td><strong>{{ a.asignatura }}</strong></td>
+                                <td style="text-align: right; color: #198754; font-weight: bold;">{{ a.presentes }}</td>
+                                <td style="text-align: right; color: #dc3545; font-weight: bold;">{{ a.ausentes }}</td>
+                                <td style="text-align: right; color: #fd7e14; font-weight: bold;">{{ a.tardes }}</td>
+                                <td style="text-align: right; font-weight: bold;">{{ a.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- RESUMEN POR JORNADA -->
+                {% if estadisticas_jornada and estadisticas_jornada|length > 0 %}
+                <div class="tarjeta-modulo">
+                    <h3>Estadísticas por Jornada</h3>
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th>Jornada</th>
+                                <th style="text-align: right;">Presentes</th>
+                                <th style="text-align: right;">Ausentes</th>
+                                <th style="text-align: right;">Tardes</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for j in estadisticas_jornada %}
+                            <tr>
+                                <td><strong>Jornada {{ j.jornada }}</strong></td>
+                                <td style="text-align: right; color: #198754; font-weight: bold;">{{ j.presentes }}</td>
+                                <td style="text-align: right; color: #dc3545; font-weight: bold;">{{ j.ausentes }}</td>
+                                <td style="text-align: right; color: #fd7e14; font-weight: bold;">{{ j.tardes }}</td>
+                                <td style="text-align: right; font-weight: bold;">{{ j.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- RESUMEN POR DOCENTE (SUPERVISIÓN COORDINADOR) -->
+                {% if rol == 'coordinador' and estadisticas_docente and estadisticas_docente|length > 0 %}
+                <div class="tarjeta-modulo">
+                    <h3>Estadísticas por Docente (Institucional)</h3>
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th>Docente</th>
+                                <th style="text-align: right;">Presentes</th>
+                                <th style="text-align: right;">Ausentes</th>
+                                <th style="text-align: right;">Tardes</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in estadisticas_docente %}
+                            <tr>
+                                <td><strong>{{ d.docente }}</strong></td>
+                                <td style="text-align: right; color: #198754; font-weight: bold;">{{ d.presentes }}</td>
+                                <td style="text-align: right; color: #dc3545; font-weight: bold;">{{ d.ausentes }}</td>
+                                <td style="text-align: right; color: #fd7e14; font-weight: bold;">{{ d.tardes }}</td>
+                                <td style="text-align: right; font-weight: bold;">{{ d.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+            {% endif %}
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const gradoSelect = document.getElementById('grado');
+        const grupoSelect = document.getElementById('grupo');
+        const modalidadSelect = document.getElementById('modalidad');
+        const contenedorModalidad = document.getElementById('contenedor-modalidad');
+        const asignaturaSelect = document.getElementById('asignatura');
+
+        function esGradoTecnico(textoOValor) {
+            if (!textoOValor) return false;
+            const limpio = String(textoOValor).trim().toLowerCase();
+            return limpio === '10' || limpio === '11' || limpio.endsWith(' 10') || limpio.endsWith(' 11');
+        }
+
+        function actualizarOpcionesGrupo() {
+            if (!gradoSelect || !grupoSelect) return;
+            const valGrado = gradoSelect.value;
+            const valorActualGrupo = grupoSelect.value;
+
+            const url = valGrado 
+                ? `/api/grupos_validos?grado=${encodeURIComponent(valGrado)}`
+                : `/api/grupos_validos`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    grupoSelect.innerHTML = '<option value="">-- Todos los grupos --</option>';
+                    let encontrado = false;
+                    data.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.id;
+                        opt.textContent = String(item.nombre || '').replace(/^grupo\s+/i, '').replace(/^grado\s+/i, '').trim();
+                        if (String(item.id) === String(valorActualGrupo) || item.nombre === valorActualGrupo) {
+                            opt.selected = true;
+                            encontrado = true;
+                        }
+                        grupoSelect.appendChild(opt);
+                    });
+                    if (valorActualGrupo && !encontrado) {
+                        grupoSelect.value = '';
+                    }
+                })
+                .catch(err => console.error('Error cargando grupos:', err));
+        }
+
+        function actualizarOpcionesAsignatura() {
+            if (!gradoSelect || !asignaturaSelect) return;
+            const optSeleccionada = gradoSelect.options[gradoSelect.selectedIndex];
+            const textoGrado = optSeleccionada ? optSeleccionada.text.replace('Grado', '').trim() : '';
+            const valGrado = gradoSelect.value;
+            const gradoParaEvaluar = textoGrado || valGrado;
+
+            const tieneModalidad = esGradoTecnico(gradoParaEvaluar);
+            if (contenedorModalidad) {
+                contenedorModalidad.style.display = tieneModalidad ? 'flex' : 'none';
+                if (!tieneModalidad && modalidadSelect) {
+                    modalidadSelect.value = 'General';
+                }
+            }
+
+            const modalidadVal = (modalidadSelect && tieneModalidad) ? modalidadSelect.value : 'General';
+            const url = valGrado 
+                ? `/api/asignaturas_validas?grado=${encodeURIComponent(valGrado)}&modalidad=${encodeURIComponent(modalidadVal)}`
+                : `/api/asignaturas_validas`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    const valorActual = asignaturaSelect.value;
+                    asignaturaSelect.innerHTML = '<option value="">-- Todas las asignaturas --</option>';
+                    let encontrado = false;
+                    data.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.id;
+                        opt.textContent = item.nombre;
+                        if (String(item.id) === String(valorActual)) {
+                            opt.selected = true;
+                            encontrado = true;
+                        }
+                        asignaturaSelect.appendChild(opt);
+                    });
+                    if (valorActual && !encontrado) {
+                        asignaturaSelect.value = '';
+                    }
+                })
+                .catch(err => console.error('Error cargando asignaturas:', err));
+        }
+
+        if (gradoSelect) {
+            gradoSelect.addEventListener('change', function() {
+                actualizarOpcionesGrupo();
+                actualizarOpcionesAsignatura();
+            });
+            if (gradoSelect.value && (!grupoSelect.value || grupoSelect.options.length <= 1)) {
+                actualizarOpcionesGrupo();
+            }
+        }
+        if (modalidadSelect) {
+            modalidadSelect.addEventListener('change', actualizarOpcionesAsignatura);
+        }
+    });
+    </script>
+</body>
+</html>

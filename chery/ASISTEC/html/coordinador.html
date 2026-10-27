@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Panel del Coordinador</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol rol-coordinador">Coordinador</span>
+            </div>
+            <div class="usuario-info">
+                <span>Coordinador: <strong>{{ session.get('nombre') or usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="tarjeta-bienvenida">
+                <h2>Bienvenido, {{ session.get('nombre') or usuario }}</h2>
+                <p>Has iniciado sesión en el panel de supervisión institucional de <strong>ASISTEC</strong>.</p>
+                <div class="info-usuario-caja">
+                    <p><strong>Coordinador:</strong> {{ session.get('nombre') or usuario }}</p>
+                    <p><strong>Usuario activo:</strong> {{ usuario }}</p>
+                    <p><strong>Rol asignado:</strong> Coordinador</p>
+                </div>
+            </div>
+
+            <!-- MÓDULO ESPECIAL: GESTIÓN DE ESTUDIANTES Y CONTROL DE PERMISOS -->
+            <div class="tarjeta-modulo" style="margin-bottom: 24px; border-left: 5px solid #8E5BB7;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">ADMINISTRACIÓN DE MATRÍCULA</h3>
+                    <a href="{{ url_for('gestion_estudiantes') }}" class="btn-modulo-item" style="display: inline-flex; width: auto; padding: 12px 24px; background-color: #8E5BB7;">⚙️ GESTIÓN DE ESTUDIANTES</a>
+                </div>
+                <p style="margin-bottom: 14px; font-size: 0.95rem; color: #475569;">Gestión anual de estudiantes, cambios de grado/grupo, retiros y promociones escolares.</p>
+                
+                <!-- CONTROL DE PERMISO ESPECIAL PARA DOCENTES DE TECNOLOGÍA -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <span style="font-weight: 600; color: #1e293b;">Permiso para docentes de Tecnología e Informática:</span>
+                        <span style="display: inline-block; margin-left: 8px; font-weight: 700; padding: 3px 10px; border-radius: 6px; font-size: 0.82rem; color: #fff; background-color: {% if permiso_docentes_tec %}#059669{% else %}#dc2626{% endif %};">
+                            {{ 'ACTIVADO' if permiso_docentes_tec else 'DESACTIVADO' }}
+                        </span>
+                    </div>
+                    <form method="POST" action="{{ url_for('toggle_permiso_docentes_tec') }}" style="margin: 0;">
+                        <button type="submit" style="padding: 7px 14px; font-size: 0.88rem; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; color: #fff; background-color: {% if permiso_docentes_tec %}#dc2626{% else %}#059669{% endif %}; transition: opacity 0.2s;">
+                            {{ 'Desactivar Permiso' if permiso_docentes_tec else 'Activar Permiso' }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- MÓDULOS OPERATIVOS DE ASISTENCIA -->
+            <div class="tarjeta-modulo">
+                <h3>MÓDULOS OPERATIVOS DE ASISTENCIA</h3>
+                <p style="margin-bottom: 18px;">Supervisión institucional general de asistencia:</p>
+                <div class="cuadricula-modulos-operativos">
+                    <a href="{{ url_for('registro_inasistencia') }}" class="btn-modulo-item">📝 Registro de inasistencia</a>
+                    <a href="{{ url_for('consultar_asistencia') }}" class="btn-modulo-item">🔍 Consultar inasistencia</a>
+                    <a href="{{ url_for('estadisticas') }}" class="btn-modulo-item">📈 Estadísticas</a>
+                    <a href="{{ url_for('reporte') }}" class="btn-modulo-item">📄 Reportes de inasistencia</a>
+                </div>
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

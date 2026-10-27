@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Prueba de Conexión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor">
+        <header class="encabezado">
+            <h1>ASISTEC</h1>
+            <p class="subtitulo">Sistema Inteligente de Registro de Asistencia Estudiantil</p>
+        </header>
+
+        <section class="tarjeta">
+            <h2>Estado de la Conexión con MySQL</h2>
+            
+            {% if estado == "conectado" %}
+                <div class="alerta exito">
+                    <strong>&#10004; Conectado correctamente</strong>
+                    <p>La comunicación entre <strong>Flask (Python)</strong> y <strong>MySQL (XAMPP)</strong> está funcionando.</p>
+                </div>
+
+                <div class="info-bd">
+                    <p><strong>Base de datos activa:</strong> <code>asistec</code></p>
+                    <p><strong>Servidor:</strong> <code>localhost:3306</code></p>
+                </div>
+
+                <h3>Consulta de prueba a la tabla <code>estudiantes</code>:</h3>
+                {% if estudiantes %}
+                    <table class="tabla-datos">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre Completo</th>
+                                <th>Correo Electrónico</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for est in estudiantes %}
+                            <tr>
+                                <td>{{ est.Est_CodEstudiante }}</td>
+                                <td>{{ est.Est_Nombre }} {{ est.Est_Apellido }}</td>
+                                <td>{{ est.Est_Correo }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="texto-vacio">No hay estudiantes registrados en la tabla.</p>
+                {% endif %}
+
+            {% else %}
+                <div class="alerta error">
+                    <strong>✗ Error de conexión</strong>
+                    <p>{{ mensaje_error }}</p>
+                    <p>Verifica que MySQL esté encendido en XAMPP y que la base de datos <code>asistec</code> exista.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <footer class="pie-pagina">
+            <p>ASISTEC &copy; 2026 - Proyecto Académico</p>
+        </footer>
+    </div>
+</body>
+</html>

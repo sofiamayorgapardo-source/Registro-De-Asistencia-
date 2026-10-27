@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Catálogo de Jornadas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% endif %}">
+                    {{ rol|capitalize }}
+                </span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>⏰ Jornadas Académicas</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('panel_docente') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% endif %}
+            </div>
+
+            <!-- TARJETA EXPLICATIVA DE ESTRUCTURA INSTITUCIONAL -->
+            <div class="info-usuario-caja" style="margin-bottom: 20px;">
+                <p><strong>ℹ️ Organización de la Jornada en ASISTEC:</strong></p>
+                <p>En la estructura institucional de ASISTEC, la información de jornada se gestiona y relaciona directamente a través de los horarios de registro de asistencia (<code>Reg_FechaHoraIngreso</code> en <code>registroasistencia</code>), los grupos académicos y la sede educativa (<code>sedes</code>).</p>
+            </div>
+
+            <!-- TARJETAS DE RESUMEN DE JORNADAS -->
+            <div class="tarjeta-resumen-metricas">
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Jornadas Activas</span>
+                    <span class="metrica-valor">3</span>
+                </div>
+                <div class="metrica-item metrica-presente">
+                    <span class="metrica-titulo">Jornada Principal</span>
+                    <span class="metrica-valor" style="font-size: 1.3rem; margin-top: 8px;">Mañana</span>
+                </div>
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Sede Asignada</span>
+                    <span class="metrica-valor" style="font-size: 1.2rem; color: #1e3c72; margin-top: 8px;">{{ sede_nombre }}</span>
+                </div>
+            </div>
+
+            <!-- TABLA DE JORNADAS DISPONIBLES -->
+            <div class="tarjeta-asistencia">
+                <h3>Distribución de Jornadas y Horarios Institucionales</h3>
+                
+                <div class="contenedor-tabla-scroll">
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th>Jornada</th>
+                                <th>Horario Oficial</th>
+                                <th>Grados y Grupos Vinculados</th>
+                                <th>Horario de Registro Habitual</th>
+                                <th>Sede</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Jornada Mañana</strong></td>
+                                <td>6:30 AM – 12:30 PM</td>
+                                <td>Grado 10° (Grupo A), Grado 11° (Grupo B)</td>
+                                <td><span style="color: #198754; font-weight: bold;">08:00:00 AM</span> (Registrado en MySQL)</td>
+                                <td>{{ sede_nombre }}</td>
+                                <td><span class="insignia-estado estado-presente">Activa</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Jornada Tarde</strong></td>
+                                <td>12:30 PM – 6:30 PM</td>
+                                <td>Grupos de la tarde</td>
+                                <td>01:30:00 PM</td>
+                                <td>{{ sede_nombre }}</td>
+                                <td><span class="insignia-estado estado-presente">Activa</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Jornada Única / Completa</strong></td>
+                                <td>7:00 AM – 3:00 PM</td>
+                                <td>Cursos de Formación Técnica Especializada</td>
+                                <td>07:30:00 AM</td>
+                                <td>{{ sede_nombre }}</td>
+                                <td><span class="insignia-estado estado-presente">Activa</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

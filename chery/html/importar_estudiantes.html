@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Importar Estudiantes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .caja-paso {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 22px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }
+        .badge-dup {
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .badge-ok {
+            background-color: #d1fae5;
+            color: #065f46;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .badge-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% endif %}">{{ rol|capitalize }}</span>
+            </div>
+            <div class="usuario-info">
+                <span>Usuario: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>📥 Importación Masiva de Estudiantes (Excel / CSV)</h2>
+                <a href="{{ url_for('gestion_estudiantes') }}" class="btn-volver">⬅ Volver a Gestión</a>
+            </div>
+
+            {% if error %}
+                <div class="alerta error" style="margin-bottom: 16px;">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+            {% if mensaje %}
+                <div class="alerta" style="background-color: #d1fae5; border: 1px solid #34d399; color: #065f46; margin-bottom: 16px;">
+                    <strong>Éxito:</strong> {{ mensaje }}
+                </div>
+            {% endif %}
+
+            {% if not preview %}
+                <!-- PASO 1: SELECCIONAR Y SUBIR ARCHIVO -->
+                <div class="caja-paso">
+                    <h3 style="color: #1e293b; margin-bottom: 10px;">1. Selecciona el archivo de estudiantes</h3>
+                    <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 16px;">
+                        Puedes cargar un archivo <strong>Excel (.xlsx)</strong> o <strong>CSV (.csv)</strong> con la nómina de estudiantes.
+                        El sistema generará una <strong>vista previa obligatoria</strong> antes de guardar cualquier dato en MySQL.
+                    </p>
+
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 8px 0; color: #334155; font-size: 0.95rem;">📋 Columnas esperadas en el archivo:</h4>
+                        <code style="display: block; background: #fff; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 4px; font-size: 0.88rem; color: #475569;">
+                            Nombres, Apellidos, Grado, Grupo, Jornada, Sede, Año
+                        </code>
+                        <div style="margin-top: 10px;">
+                            <a href="{{ url_for('descargar_plantilla_estudiantes') }}" class="btn-accion-gestion" style="display: inline-flex; font-size: 0.85rem; padding: 6px 14px; background-color: #0284c7;">
+                                📄 Descargar Plantilla de Ejemplo (.CSV)
+                            </a>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('preview_importar_estudiantes') }}" enctype="multipart/form-data">
+                        <div class="grupo-filtro" style="margin-bottom: 16px;">
+                            <label for="archivoEstudiantes"><strong>Archivo a importar (.xlsx o .csv):</strong></label>
+                            <input type="file" id="archivoEstudiantes" name="archivo" accept=".xlsx, .csv" required style="padding: 10px; border: 1px dashed #8E5BB7; border-radius: 6px; width: 100%; background: #faf5ff;">
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-top: 20px;">
+                            <button type="submit" class="btn-filtrar" style="background-color: #8E5BB7;">
+                                🔍 Analizar y Ver Vista Previa
+                            </button>
+                            <a href="{{ url_for('gestion_estudiantes') }}" class="btn-cancelar" style="text-decoration: none; padding: 10px 18px; text-align: center;">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            {% else %}
+                <!-- PASO 2: VISTA PREVIA OBLIGATORIA ANTES DE GUARDAR -->
+                <div class="caja-paso" style="border-left: 5px solid #0284c7;">
+                    <h3 style="color: #0369a1; margin-bottom: 8px;">2. Vista Previa de Estudiantes a Importar</h3>
+                    <p style="color: #475569; font-size: 0.95rem; margin-bottom: 16px;">
+                        Revisa la lista a continuación. Hemos analizado el archivo y detectado posibles coincidencias en el sistema antes de guardar.
+                    </p>
+
+                    <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px;">
+                        <div style="background: #f1f5f9; padding: 10px 16px; border-radius: 6px; font-size: 0.9rem;">
+                            <strong>Total registros leídos:</strong> {{ preview|length }}
+                        </div>
+                        <div style="background: #d1fae5; padding: 10px 16px; border-radius: 6px; font-size: 0.9rem; color: #065f46;">
+                            <strong>Listos para crear:</strong> {{ total_nuevos }}
+                        </div>
+                        {% if total_duplicados > 0 %}
+                        <div style="background: #fef3c7; padding: 10px 16px; border-radius: 6px; font-size: 0.9rem; color: #92400e;">
+                            <strong>⚠️ Posibles duplicados:</strong> {{ total_duplicados }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="contenedor-tabla-scroll" style="max-height: 420px; overflow-y: auto; margin-bottom: 24px;">
+                        <table class="tabla-asistencia">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; text-align: center;">#</th>
+                                    <th>Nombre Completo</th>
+                                    <th style="text-align: center;">Grado</th>
+                                    <th style="text-align: center;">Grupo</th>
+                                    <th style="text-align: center;">Jornada</th>
+                                    <th>Sede</th>
+                                    <th style="text-align: center;">Año</th>
+                                    <th style="text-align: center;">Diagnóstico</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in preview %}
+                                <tr>
+                                    <td style="text-align: center; color: #64748b;">{{ loop.index }}</td>
+                                    <td><strong>{{ r.apellido }}, {{ r.nombre }}</strong></td>
+                                    <td style="text-align: center;">Grado {{ r.grado }}</td>
+                                    <td style="text-align: center; font-weight: 600;">{{ r.grupo_nom }}</td>
+                                    <td style="text-align: center;">{{ r.jornada }}</td>
+                                    <td>{{ r.sede }}</td>
+                                    <td style="text-align: center; color: #8E5BB7; font-weight: 600;">{{ r.anio }}</td>
+                                    <td style="text-align: center;">
+                                        {% if r.es_duplicado %}
+                                            <span class="badge-dup" title="Ya existe un estudiante con nombre similar en este grupo">⚠️ Posible Duplicado</span>
+                                        {% elif r.error_val %}
+                                            <span class="badge-error">{{ r.error_val }}</span>
+                                        {% else %}
+                                            <span class="badge-ok">✓ Válido</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- BOTONES DE CONFIRMACIÓN O CANCELACIÓN -->
+                    <form method="POST" action="{{ url_for('confirmar_importar_estudiantes') }}">
+                        <input type="hidden" name="token_preview" value="{{ token_preview }}">
+                        <div style="display: flex; gap: 14px; align-items: center;">
+                            <button type="submit" class="btn-filtrar" style="background-color: #059669; padding: 12px 24px; font-size: 1rem;">
+                                💾 Confirmar e Importar Estudiantes
+                            </button>
+                            <a href="{{ url_for('importar_estudiantes') }}" class="btn-cancelar" style="text-decoration: none; padding: 12px 20px;">
+                                ❌ Cancelar Importación
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            {% endif %}
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

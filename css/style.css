@@ -1,0 +1,725 @@
+/* Estilos globales y limpios para ASISTEC */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f4f6f9;
+    color: #333333;
+    min-height: 100vh;
+}
+
+/* --- ESTILOS DEL LOGIN --- */
+.cuerpo-login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.tarjeta-login {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 40px 35px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.encabezado-login {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.logo-asistec {
+    font-size: 2.3rem;
+    color: #1e3c72;
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+.subtitulo {
+    color: #666666;
+    font-size: 0.95rem;
+    margin-top: 6px;
+    line-height: 1.3;
+}
+
+.formulario-login {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.campo-formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.campo-formulario label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.campo-formulario input {
+    padding: 12px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.campo-formulario input:focus {
+    border-color: #1e3c72;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.15);
+}
+
+.btn-primario {
+    background-color: #1e3c72;
+    color: #ffffff;
+    border: none;
+    padding: 13px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-primario:hover {
+    background-color: #162d56;
+}
+
+.btn-primario:active {
+    transform: scale(0.98);
+}
+
+.alerta {
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+}
+
+.alerta.error {
+    background-color: #fce8e6;
+    border: 1px solid #fad2cf;
+    color: #c5221f;
+}
+
+.alerta.exito {
+    background-color: #e6f4ea;
+    border: 1px solid #ceead6;
+    color: #137333;
+}
+
+.pie-login {
+    text-align: center;
+    margin-top: 25px;
+    font-size: 0.85rem;
+    color: #888888;
+}
+
+/* --- ESTILOS DE LOS PANELES Y NAVEGACIÓN --- */
+.contenedor-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.barra-navegacion {
+    background-color: #ffffff;
+    padding: 15px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.barra-navegacion .marca {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.barra-navegacion .marca h1 {
+    font-size: 1.8rem;
+    color: #1e3c72;
+    letter-spacing: 1px;
+}
+
+.etiqueta-rol {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+}
+
+.etiqueta-rol.rol-coordinador {
+    background-color: #f3e5f5;
+    color: #4a148c;
+}
+
+.usuario-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 0.95rem;
+}
+
+.btn-cerrar-sesion {
+    background-color: #dc3545;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    transition: background-color 0.2s;
+}
+
+.btn-cerrar-sesion:hover {
+    background-color: #bb2d3b;
+}
+
+.contenido-panel {
+    flex: 1;
+    max-width: 1050px;
+    width: 100%;
+    margin: 25px auto;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.barra-superior-modulo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.barra-superior-modulo h2 {
+    color: #1e3c72;
+    font-size: 1.6rem;
+}
+
+.btn-volver {
+    color: #555555;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: #e9ecef;
+    transition: background 0.2s;
+}
+
+.btn-volver:hover {
+    background: #dee2e6;
+}
+
+.tarjeta-bienvenida, .tarjeta-modulo, .tarjeta-filtro, .tarjeta-asistencia, .tarjeta-confirmacion, .tarjeta-reporte-documento {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 25px 30px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.tarjeta-bienvenida h2 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.info-usuario-caja {
+    background-color: #f8f9fa;
+    border-left: 4px solid #1e3c72;
+    padding: 12px 18px;
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+.info-usuario-caja p {
+    margin: 4px 0;
+    color: #333333;
+}
+
+/* --- ESTILOS DE LOS 5 BOTONES DE NAVEGACIÓN INSTITUCIONAL --- */
+.menu-navegacion-cinco {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-top: 10px;
+}
+
+.btn-menu-cinco {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    color: #1e3c72;
+    border: 2px solid #1e3c72;
+    text-decoration: none;
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(30, 60, 114, 0.08);
+}
+
+.btn-menu-cinco:hover {
+    background-color: #1e3c72;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(30, 60, 114, 0.2);
+}
+
+.btn-menu-cinco:active {
+    transform: translateY(0);
+}
+
+/* --- BOTONES DE ACCIÓN DE MÓDULOS --- */
+.grupo-botones-modulo {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.btn-accion {
+    display: inline-block;
+    background-color: #1e3c72;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background-color 0.2s;
+}
+
+.btn-accion:hover {
+    background-color: #162d56;
+}
+
+.btn-accion-secundario {
+    display: inline-block;
+    background-color: #0d6efd;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background-color 0.2s;
+}
+
+.btn-accion-secundario:hover {
+    background-color: #0b5ed7;
+}
+
+.btn-accion-estadisticas {
+    display: inline-block;
+    background-color: #198754;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background-color 0.2s;
+}
+
+.btn-accion-estadisticas:hover {
+    background-color: #157347;
+}
+
+.btn-accion-reporte {
+    display: inline-block;
+    background-color: #6f42c1;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background-color 0.2s;
+}
+
+.btn-accion-reporte:hover {
+    background-color: #59359a;
+}
+
+/* --- CUADRÍCULA Y BOTONES DE MÓDULOS OPERATIVOS DE ASISTENCIA (9 MÓDULOS) --- */
+.cuadricula-modulos-operativos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 15px;
+}
+
+.btn-modulo-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.98rem;
+    color: #ffffff;
+    background-color: #8E5BB7;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-modulo-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
+    filter: brightness(1.06);
+}
+
+.btn-modulo-item:active {
+    transform: translateY(0);
+}
+
+.cuadricula-modulos-operativos .btn-modulo-item,
+.btn-item-registrar,
+.btn-item-consultar,
+.btn-item-estadisticas,
+.btn-item-reporte {
+    background-color: #8E5BB7;
+}
+.btn-item-grupo { background-color: #0284c7; }
+.btn-item-grado { background-color: #4f46e5; }
+.btn-item-jornada { background-color: #d97706; }
+.btn-item-docente { background-color: #0891b2; }
+.btn-item-asignatura { background-color: #be185d; }
+
+/* --- ESTILOS DE FILTROS Y FORMULARIOS --- */
+.tarjeta-filtro h3, .tarjeta-asistencia h3, .tarjeta-modulo h3 {
+    color: #2c3e50;
+    font-size: 1.2rem;
+    margin-bottom: 18px;
+    border-bottom: 2px solid #eef2f7;
+    padding-bottom: 8px;
+}
+
+.formulario-filtro {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.grupo-filtro {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 170px;
+}
+
+.grupo-filtro label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.grupo-filtro input[type="date"],
+.grupo-filtro select, 
+.select-estado {
+    padding: 9px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    background-color: #ffffff;
+    color: #333333;
+    cursor: pointer;
+}
+
+.grupo-filtro input[type="date"]:focus,
+.grupo-filtro select:focus, 
+.select-estado:focus {
+    border-color: #1e3c72;
+    outline: none;
+}
+
+.grupo-filtro-botones {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btn-filtrar {
+    background-color: #0d6efd;
+    color: #ffffff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-filtrar:hover {
+    background-color: #0b5ed7;
+}
+
+.btn-limpiar {
+    background-color: #6c757d;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    display: inline-block;
+    transition: background 0.2s;
+}
+
+.btn-limpiar:hover {
+    background-color: #5c636a;
+}
+
+.btn-imprimir {
+    background-color: #212529;
+    color: #ffffff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+}
+
+.btn-imprimir:hover {
+    background-color: #000000;
+}
+
+/* --- TARJETA DE RESUMEN Y MÉTRICAS --- */
+.tarjeta-resumen-metricas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.metrica-item {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    border-left: 5px solid #1e3c72;
+    border-top: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.metrica-titulo {
+    font-size: 0.85rem;
+    color: #666666;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.metrica-valor {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: #1e3c72;
+    margin-top: 4px;
+}
+
+.metrica-porcentaje {
+    font-size: 0.85rem;
+    color: #666666;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.metrica-presente {
+    border-left-color: #198754;
+}
+.metrica-presente .metrica-valor, .metrica-presente .metrica-porcentaje {
+    color: #198754;
+}
+
+.metrica-ausente {
+    border-left-color: #dc3545;
+}
+.metrica-ausente .metrica-valor, .metrica-ausente .metrica-porcentaje {
+    color: #dc3545;
+}
+
+.metrica-tarde {
+    border-left-color: #fd7e14;
+}
+.metrica-tarde .metrica-valor, .metrica-tarde .metrica-porcentaje {
+    color: #fd7e14;
+}
+
+/* --- TABLA DE RESULTADOS --- */
+.contenedor-tabla-scroll {
+    overflow-x: auto;
+}
+
+.tabla-asistencia {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+.tabla-asistencia th, .tabla-asistencia td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.92rem;
+}
+
+.tabla-asistencia th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+}
+
+.tabla-asistencia tr:hover {
+    background-color: #fdfdfd;
+}
+
+/* --- INSIGNIAS DE ESTADO --- */
+.insignia-estado {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.estado-presente {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.estado-ausente {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+.estado-tarde {
+    background-color: #ffe5d0;
+    color: #a04000;
+}
+
+.alerta-vacia {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    padding: 25px;
+    border-radius: 8px;
+    text-align: center;
+    color: #666666;
+    font-size: 0.95rem;
+}
+
+.pie-panel {
+    text-align: center;
+    padding: 20px;
+    color: #888888;
+    font-size: 0.85rem;
+    margin-top: auto;
+}
+
+code {
+    background-color: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: Consolas, monospace;
+}
+
+/* ==================================================
+   REGLAS DE IMPRESIÓN CON GOOGLE CHROME (@media print)
+   ================================================== */
+@media print {
+    .no-imprimir, 
+    .barra-navegacion, 
+    .tarjeta-filtro, 
+    .barra-superior-modulo, 
+    .pie-panel, 
+    .btn-volver, 
+    .btn-cerrar-sesion,
+    .btn-filtrar,
+    .btn-limpiar,
+    .btn-imprimir {
+        display: none !important;
+    }
+
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .contenido-panel {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .tarjeta-reporte-documento {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 10px 0 !important;
+        width: 100% !important;
+    }
+
+    .caja-metadatos-reporte {
+        background-color: #ffffff !important;
+        border: 1px solid #333333 !important;
+    }
+
+    .metrica-item {
+        box-shadow: none !important;
+        border: 1px solid #cccccc !important;
+        border-left: 4px solid #333333 !important;
+    }
+
+    .tabla-asistencia th {
+        background-color: #f0f0f0 !important;
+        color: #000000 !important;
+        border-bottom: 2px solid #000000 !important;
+    }
+
+    .tabla-asistencia td {
+        border-bottom: 1px solid #cccccc !important;
+    }
+
+    .insignia-estado {
+        border: 1px solid #888888 !important;
+    }
+}

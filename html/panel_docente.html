@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Menú del Docente</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol">Docente</span>
+            </div>
+            <div class="usuario-info">
+                <span>Docente: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="tarjeta-bienvenida">
+                <h2>Bienvenido, Docente</h2>
+                <p>Has iniciado sesión correctamente en el sistema de gestión de asistencia <strong>ASISTEC</strong>.</p>
+                <div class="info-usuario-caja">
+                    <p><strong>Usuario activo:</strong> {{ usuario }}</p>
+                    <p><strong>Rol asignado:</strong> Docente</p>
+                </div>
+            </div>
+
+            <!-- MÓDULOS OPERATIVOS DE ASISTENCIA -->
+            <div class="tarjeta-modulo">
+                <h3>MÓDULOS OPERATIVOS DE ASISTENCIA</h3>
+                <p style="margin-bottom: 18px;">Selecciona una opción para gestionar o consultar la asistencia escolar:</p>
+                <div class="cuadricula-modulos-operativos">
+                    <a href="{{ url_for('registrar_asistencia') }}" class="btn-modulo-item btn-accion btn-item-registrar">📋 Registrar asistencia</a>
+                    <a href="{{ url_for('consultar_asistencia') }}" class="btn-modulo-item btn-accion-secundario btn-item-consultar">📊 Consultar asistencia</a>
+                    <a href="{{ url_for('estadisticas') }}" class="btn-modulo-item btn-accion-estadisticas btn-item-estadisticas">📈 Estadísticas</a>
+                    <a href="{{ url_for('reporte') }}" class="btn-modulo-item btn-accion-reporte btn-item-reporte">📄 Reporte de asistencia</a>
+                </div>
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Gestión de Estudiantes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .badge-estado {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        .badge-activo { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .badge-retirado { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .badge-trasladado { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .badge-graduado { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
+
+        .barra-acciones-gestion {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .grupo-botones-accion {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn-accion-gestion {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.92rem;
+            text-decoration: none;
+            color: #fff;
+            background-color: #8E5BB7;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(142, 91, 183, 0.25);
+            transition: all 0.2s ease;
+        }
+        .btn-accion-gestion:hover {
+            background-color: #7d4ba6;
+            transform: translateY(-1px);
+        }
+        .btn-secundario-gestion {
+            background-color: #0284c7;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+        }
+        .btn-secundario-gestion:hover {
+            background-color: #0369a1;
+        }
+        .btn-exportar-gestion {
+            background-color: #059669;
+            box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+        }
+        .btn-exportar-gestion:hover {
+            background-color: #047857;
+        }
+        .btn-accion-tabla {
+            padding: 5px 9px;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            margin: 2px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-editar-t { background-color: #8E5BB7; color: #fff; }
+        .btn-editar-t:hover { background-color: #7d4ba6; }
+        .btn-estado-t { background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+        .btn-estado-t:hover { background-color: #e2e8f0; }
+
+        .cuadricula-metricas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+        .tarjeta-metrica-est {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            border-left: 4px solid #8E5BB7;
+        }
+        .tarjeta-metrica-est span {
+            font-size: 0.82rem;
+            color: #64748b;
+            font-weight: 600;
+            display: block;
+        }
+        .tarjeta-metrica-est strong {
+            font-size: 1.4rem;
+            color: #1e293b;
+            display: block;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% elif rol == 'rectoria' %}rol-rectoria{% endif %}">{{ 'Rectoría' if rol == 'rectoria' else rol|capitalize }}</span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ 'Rector' if rol == 'rectoria' else rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>⚙️ Gestión y Actualización de Estudiantes {% if solo_lectura %}(Modo Solo Consulta){% endif %}</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('docente') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% elif rol == 'rectoria' %}
+                    <a href="{{ url_for('rectoria') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% endif %}
+            </div>
+
+            <!-- ALERTAS -->
+            {% if mensaje %}
+                <div class="alerta" style="background-color: #d1fae5; border: 1px solid #34d399; color: #065f46; margin-bottom: 16px;">
+                    <strong>Éxito:</strong> {{ mensaje }}
+                </div>
+            {% endif %}
+            {% if error %}
+                <div class="alerta error" style="margin-bottom: 16px;">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+
+            <!-- ACCIONES SUPERIORES -->
+            <div class="barra-acciones-gestion">
+                <div class="grupo-botones-accion">
+                    {% if not solo_lectura %}
+                        <a href="{{ url_for('nuevo_estudiante') }}" class="btn-accion-gestion">➕ Agregar Estudiante</a>
+                        <a href="{{ url_for('importar_estudiantes') }}" class="btn-accion-gestion btn-secundario-gestion">📥 Importar (Excel / CSV)</a>
+                    {% endif %}
+                    <a href="{{ url_for('exportar_estudiantes', grado=filtros.grado, grupo=filtros.grupo, jornada=filtros.jornada, sede=filtros.sede, estado=filtros.estado, anio=filtros.anio, q=filtros.q) }}" class="btn-accion-gestion btn-exportar-gestion">📤 Exportar Listado</a>
+                </div>
+                <div>
+                    <span style="font-size: 0.92rem; color: #64748b; font-weight: 600;">
+                        Año Académico Activo: <strong style="color: #8E5BB7; font-size: 1.05rem;">{{ anio_activo }}</strong>
+                    </span>
+                </div>
+            </div>
+
+            <!-- MÉTRICAS RÁPIDAS -->
+            <div class="cuadricula-metricas">
+                <div class="tarjeta-metrica-est">
+                    <span>TOTAL CONSULTADO</span>
+                    <strong>{{ total_filtrados }}</strong>
+                </div>
+                <div class="tarjeta-metrica-est" style="border-left-color: #059669;">
+                    <span>ACTIVOS</span>
+                    <strong style="color: #059669;">{{ total_activos }}</strong>
+                </div>
+                <div class="tarjeta-metrica-est" style="border-left-color: #dc2626;">
+                    <span>RETIRADOS</span>
+                    <strong style="color: #dc2626;">{{ total_retirados }}</strong>
+                </div>
+                <div class="tarjeta-metrica-est" style="border-left-color: #4f46e5;">
+                    <span>GRADUADOS</span>
+                    <strong style="color: #4f46e5;">{{ total_graduados }}</strong>
+                </div>
+            </div>
+
+            <!-- FILTROS Y BÚSQUEDA -->
+            <div class="tarjeta-filtro" style="margin-bottom: 22px;">
+                <h3 style="margin-bottom: 12px;">🔍 Búsqueda y Filtros de Estudiantes</h3>
+                <form method="GET" action="{{ url_for('gestion_estudiantes') }}" class="formulario-filtro">
+                    <!-- Búsqueda texto -->
+                    <div class="grupo-filtro" style="grid-column: span 2;">
+                        <label for="buscarNombre">Buscar por Nombre o Apellido:</label>
+                        <input type="text" name="q" id="buscarNombre" value="{{ filtros.q }}" placeholder="Escribe el nombre del estudiante..." style="padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem;">
+                    </div>
+
+                    <!-- Grado -->
+                    <div class="grupo-filtro">
+                        <label for="filtroGrado">Grado:</label>
+                        <select name="grado" id="filtroGrado">
+                            <option value="">-- Todos los Grados --</option>
+                            {% for g in grados %}
+                                <option value="{{ g.Gra_Codigo }}" {% if filtros.grado == g.Gra_Codigo|string %}selected{% endif %}>
+                                    {% if g.Gra_Codigo == 0 %}Transición{% else %}Grado {{ g.Gra_NombreGrado }}{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Grupo -->
+                    <div class="grupo-filtro">
+                        <label for="filtroGrupo">Grupo:</label>
+                        <select name="grupo" id="filtroGrupo">
+                            <option value="">-- Todos los Grupos --</option>
+                            {% for gr in grupos %}
+                                <option value="{{ gr.Gru_Codigo }}" {% if filtros.grupo == gr.Gru_Codigo|string %}selected{% endif %}>
+                                    {{ gr.Gru_NombreGrupo }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Jornada -->
+                    <div class="grupo-filtro">
+                        <label for="filtroJornada">Jornada:</label>
+                        <select name="jornada" id="filtroJornada">
+                            <option value="">-- Todas las Jornadas --</option>
+                            {% for j in jornadas %}
+                                <option value="{{ j }}" {% if filtros.jornada == j %}selected{% endif %}>{{ j }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Sede -->
+                    <div class="grupo-filtro">
+                        <label for="filtroSede">Sede:</label>
+                        <select name="sede" id="filtroSede">
+                            <option value="">-- Todas las Sedes --</option>
+                            {% for s in sedes %}
+                                <option value="{{ s }}" {% if filtros.sede == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="grupo-filtro">
+                        <label for="filtroEstado">Estado:</label>
+                        <select name="estado" id="filtroEstado">
+                            <option value="">-- Todos los Estados --</option>
+                            <option value="Activo" {% if filtros.estado == 'Activo' %}selected{% endif %}>Activo</option>
+                            <option value="Retirado" {% if filtros.estado == 'Retirado' %}selected{% endif %}>Retirado</option>
+                            <option value="Trasladado" {% if filtros.estado == 'Trasladado' %}selected{% endif %}>Trasladado</option>
+                            <option value="Graduado" {% if filtros.estado == 'Graduado' %}selected{% endif %}>Graduado</option>
+                        </select>
+                    </div>
+
+                    <!-- Año Académico -->
+                    <div class="grupo-filtro">
+                        <label for="filtroAnio">Año Académico:</label>
+                        <select name="anio" id="filtroAnio">
+                            <option value="">-- Todos los Años --</option>
+                            {% for a in anios_disponibles %}
+                                <option value="{{ a }}" {% if filtros.anio == a|string %}selected{% endif %}>Año {{ a }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="grupo-filtro-botones" style="display: flex; gap: 8px; align-items: flex-end;">
+                        <button type="submit" class="btn-filtrar">🔍 Filtrar</button>
+                        <a href="{{ url_for('gestion_estudiantes') }}" class="btn-cancelar" style="text-decoration: none; padding: 10px 14px; text-align: center;">Limpiar</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TABLA DE ESTUDIANTES -->
+            <div class="tarjeta-asistencia">
+                <div class="encabezado-seccion-asistencia">
+                    <h3>Directorio de Estudiantes ({{ estudiantes|length }})</h3>
+                </div>
+
+                <div class="contenedor-tabla-scroll">
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px; text-align: center;">#</th>
+                                <th>Nombre Completo</th>
+                                <th style="text-align: center;">Grado</th>
+                                <th style="text-align: center;">Grupo</th>
+                                <th style="text-align: center;">Jornada</th>
+                                <th>Sede</th>
+                                <th style="text-align: center;">Año</th>
+                                <th style="text-align: center;">Estado</th>
+                                {% if not solo_lectura %}
+                                    <th style="text-align: center; width: 170px;">Acciones</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if estudiantes|length > 0 %}
+                                {% for est in estudiantes %}
+                                <tr>
+                                    <td style="text-align: center; color: #64748b;">{{ loop.index }}</td>
+                                    <td>
+                                        <strong style="color: #1e293b; font-size: 0.96rem;">{{ est.Est_Apellido }}, {{ est.Est_Nombre }}</strong>
+                                        {% if est.Est_Correo %}
+                                            <div style="font-size: 0.8rem; color: #64748b;">{{ est.Est_Correo }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td style="text-align: center;">
+                                        {% if est.Est_Cod_Grado == 0 %}Transición{% else %}Grado {{ est.Est_Cod_Grado }}{% endif %}
+                                    </td>
+                                    <td style="text-align: center; font-weight: 600;">
+                                        {{ est.Gru_NombreGrupo or est.Est_Cod_Grupo }}
+                                    </td>
+                                    <td style="text-align: center;">{{ est.Est_Jornada or 'Mañana' }}</td>
+                                    <td>{{ est.Sed_NomSede or 'Sede Principal' }}</td>
+                                    <td style="text-align: center; font-weight: 600; color: #8E5BB7;">
+                                        {{ est.Est_AnioLectivo or 2026 }}
+                                    </td>
+                                    <td style="text-align: center;">
+                                        {% set st = est.Est_Estado or 'Activo' %}
+                                        {% if st == 'Activo' %}
+                                            <span class="badge-estado badge-activo">Activo</span>
+                                        {% elif st == 'Retirado' %}
+                                            <span class="badge-estado badge-retirado">Retirado</span>
+                                        {% elif st == 'Trasladado' %}
+                                            <span class="badge-estado badge-trasladado">Trasladado</span>
+                                        {% elif st == 'Graduado' %}
+                                            <span class="badge-estado badge-graduado">Graduado</span>
+                                        {% else %}
+                                            <span class="badge-estado">{{ st }}</span>
+                                        {% endif %}
+                                    </td>
+                                    {% if not solo_lectura %}
+                                    <td style="text-align: center;">
+                                        <a href="{{ url_for('editar_estudiante', id_estudiante=est.Est_CodEstudiante) }}" class="btn-accion-tabla btn-editar-t" title="Editar estudiante o promover grado">✏️ Editar</a>
+                                        
+                                        <form method="POST" action="{{ url_for('cambiar_estado_estudiante', id_estudiante=est.Est_CodEstudiante) }}" style="display: inline;" onsubmit="return confirm('¿Confirmas cambiar el estado de este estudiante?');">
+                                            {% if est.Est_Estado == 'Activo' or not est.Est_Estado %}
+                                                <input type="hidden" name="nuevo_estado" value="Retirado">
+                                                <button type="submit" class="btn-accion-tabla btn-estado-t" title="Marcar como Retirado" style="color: #dc2626;">🚫 Retirar</button>
+                                            {% else %}
+                                                <input type="hidden" name="nuevo_estado" value="Activo">
+                                                <button type="submit" class="btn-accion-tabla btn-estado-t" title="Reactivar estudiante" style="color: #059669;">🔄 Activar</button>
+                                            {% endif %}
+                                        </form>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="{% if not solo_lectura %}9{% else %}8{% endif %}" style="text-align: center; color: #64748b; padding: 24px;">
+                                        ℹ️ No se encontraron estudiantes que coincidan con los criterios seleccionados.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

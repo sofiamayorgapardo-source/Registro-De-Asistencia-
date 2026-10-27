@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - {{ 'Editar' if es_edicion else 'Agregar' }} Estudiante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% endif %}">{{ rol|capitalize }}</span>
+            </div>
+            <div class="usuario-info">
+                <span>Usuario: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>{{ '✏️ Editar / Promover' if es_edicion else '➕ Agregar Nuevo' }} Estudiante</h2>
+                <a href="{{ url_for('gestion_estudiantes') }}" class="btn-volver">⬅ Volver a Gestión</a>
+            </div>
+
+            {% if error %}
+                <div class="alerta error" style="margin-bottom: 16px;">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="tarjeta-filtro" style="max-width: 820px; margin: 0 auto;">
+                <p style="color: #64748b; margin-bottom: 20px;">
+                    {% if es_edicion %}
+                        Modifica los datos del estudiante o asígnale un nuevo Grado, Grupo o Año Académico (los registros de asistencia anteriores se preservan automáticamente).
+                    {% else %}
+                        Diligencia la información básica y académica para registrar un nuevo estudiante en el sistema.
+                    {% endif %}
+                </p>
+
+                <form method="POST" action="{{ url_for('editar_estudiante', id_estudiante=estudiante.Est_CodEstudiante) if es_edicion else url_for('nuevo_estudiante') }}">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                        <!-- Nombres -->
+                        <div class="grupo-filtro">
+                            <label for="estNombre">Nombres *:</label>
+                            <input type="text" id="estNombre" name="nombre" value="{{ estudiante.Est_Nombre or '' }}" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        </div>
+
+                        <!-- Apellidos -->
+                        <div class="grupo-filtro">
+                            <label for="estApellido">Apellidos *:</label>
+                            <input type="text" id="estApellido" name="apellido" value="{{ estudiante.Est_Apellido or '' }}" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        </div>
+
+                        <!-- Grado -->
+                        <div class="grupo-filtro">
+                            <label for="estGrado">Grado Académico *:</label>
+                            <select id="estGrado" name="grado" required onchange="actualizarGruposFormulario()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <option value="">-- Seleccionar Grado --</option>
+                                {% for g in grados %}
+                                    <option value="{{ g.Gra_Codigo }}" {% if estudiante and estudiante.Est_Cod_Grado|string == g.Gra_Codigo|string %}selected{% endif %}>
+                                        {% if g.Gra_Codigo == 0 %}Transición{% else %}Grado {{ g.Gra_NombreGrado }}{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Grupo -->
+                        <div class="grupo-filtro">
+                            <label for="estGrupo">Grupo *:</label>
+                            <select id="estGrupo" name="grupo" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <option value="">-- Seleccionar Grupo --</option>
+                                {% for gr in grupos %}
+                                    <option value="{{ gr.Gru_Codigo }}" data-grado="{{ gr.Gru_Cod_Grado }}" {% if estudiante and estudiante.Est_Cod_Grupo|string == gr.Gru_Codigo|string %}selected{% endif %}>
+                                        {{ gr.Gru_NombreGrupo }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Jornada -->
+                        <div class="grupo-filtro">
+                            <label for="estJornada">Jornada *:</label>
+                            <select id="estJornada" name="jornada" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                {% for j in jornadas %}
+                                    <option value="{{ j }}" {% if estudiante and (estudiante.Est_Jornada == j or (not estudiante.Est_Jornada and j == 'Mañana')) %}selected{% endif %}>{{ j }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Sede -->
+                        <div class="grupo-filtro">
+                            <label for="estSede">Sede Institucional *:</label>
+                            <select id="estSede" name="sede" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                {% for s in sedes %}
+                                    <option value="{{ s }}" {% if estudiante and (estudiante.Sed_NomSede == s or s in (estudiante.Sed_NomSede or '')) %}selected{% endif %}>{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Año Lectivo -->
+                        <div class="grupo-filtro">
+                            <label for="estAnio">Año Académico *:</label>
+                            <input type="number" id="estAnio" name="anio" value="{{ estudiante.Est_AnioLectivo or anio_activo or 2026 }}" min="2020" max="2050" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        </div>
+
+                        <!-- Estado -->
+                        <div class="grupo-filtro">
+                            <label for="estEstado">Estado del Estudiante *:</label>
+                            <select id="estEstado" name="estado" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <option value="Activo" {% if not estudiante or estudiante.Est_Estado == 'Activo' %}selected{% endif %}>Activo</option>
+                                <option value="Retirado" {% if estudiante and estudiante.Est_Estado == 'Retirado' %}selected{% endif %}>Retirado</option>
+                                <option value="Trasladado" {% if estudiante and estudiante.Est_Estado == 'Trasladado' %}selected{% endif %}>Trasladado</option>
+                                <option value="Graduado" {% if estudiante and estudiante.Est_Estado == 'Graduado' %}selected{% endif %}>Graduado</option>
+                            </select>
+                        </div>
+
+                        <!-- Correo Opcional -->
+                        <div class="grupo-filtro">
+                            <label for="estCorreo">Correo Electrónico (Opcional):</label>
+                            <input type="email" id="estCorreo" name="correo" value="{{ estudiante.Est_Correo or '' }}" placeholder="estudiante@correo.com" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        </div>
+
+                        <!-- Teléfono Opcional -->
+                        <div class="grupo-filtro">
+                            <label for="estTelefono">Teléfono (Opcional):</label>
+                            <input type="text" id="estTelefono" name="telefono" value="{{ estudiante.Est_Telefono or '' }}" placeholder="Número de contacto" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn-filtrar" style="background-color: #8E5BB7;">
+                            💾 {{ 'Guardar Cambios' if es_edicion else 'Registrar Estudiante' }}
+                        </button>
+                        <a href="{{ url_for('gestion_estudiantes') }}" class="btn-cancelar" style="text-decoration: none; padding: 10px 18px; text-align: center;">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+
+    <script>
+    function actualizarGruposFormulario() {
+        const gradoSel = document.getElementById('estGrado').value;
+        const grupoSelect = document.getElementById('estGrupo');
+        if (!gradoSel) return;
+
+        fetch('/api/grupos_validos?grado=' + encodeURIComponent(gradoSel))
+            .then(res => res.json())
+            .then(data => {
+                const valActual = grupoSelect.value;
+                grupoSelect.innerHTML = '<option value="">-- Seleccionar Grupo --</option>';
+                data.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g.id;
+                    opt.textContent = g.nombre;
+                    if (String(g.id) === String(valActual)) {
+                        opt.selected = true;
+                    }
+                    grupoSelect.appendChild(opt);
+                });
+            })
+            .catch(err => console.error('Error cargando grupos:', err));
+    }
+    </script>
+</body>
+</html>

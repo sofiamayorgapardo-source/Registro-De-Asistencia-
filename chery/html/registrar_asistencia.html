@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Registrar Asistencia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% elif rol == 'rectoria' %}rol-rectoria{% endif %}">{{ 'Rectoría' if rol == 'rectoria' else rol|capitalize }}</span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ 'Rector' if rol == 'rectoria' else rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>📋 Registrar Asistencia {% if rol == 'rectoria' %}(Modo Consulta / Solo Lectura){% endif %}</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('docente') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% elif rol == 'rectoria' %}
+                    <a href="{{ url_for('rectoria') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% endif %}
+            </div>
+
+            <!-- ALERTA DE ERROR DE CLIENTE O SERVIDOR -->
+            <div id="alertaErrorCliente" class="alerta error" style="display: none; margin-bottom: 16px;"></div>
+
+            {% if rol == 'rectoria' %}
+                <div class="alerta" style="background-color: #f3e8ff; border: 1px solid #c084fc; color: #6b21a8; margin-bottom: 16px;">
+                    <strong>ℹ️ Modo Solo Lectura (Rectoría):</strong> Puede consultar los estudiantes y datos de la clase. El rol de Rectoría no puede registrar, modificar ni eliminar asistencia.
+                </div>
+            {% endif %}
+
+            {% if error %}
+                <div class="alerta error">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+
+            {% if confirmacion %}
+                <div class="tarjeta-confirmacion">
+                    <div class="encabezado-confirmacion">
+                        <span class="icono-exito">&#10004;</span>
+                        <h3>¡Asistencia registrada correctamente!</h3>
+                    </div>
+                    <div class="detalles-confirmacion">
+                        <p><strong>Docente:</strong> {{ confirmacion.docente }}</p>
+                        <p><strong>Estudiante:</strong> <span style="color: #8E5BB7; font-weight: 700;">{{ confirmacion.estudiante }}</span></p>
+                        <p><strong>Grado:</strong> Grado {{ confirmacion.grado }} | <strong>Grupo:</strong> {{ confirmacion.grupo }}</p>
+                        <p><strong>Jornada:</strong> {{ confirmacion.jornada }} | <strong>Sede:</strong> {{ confirmacion.sede }}</p>
+                        <p><strong>Asignatura:</strong> {{ confirmacion.asignatura }}{% if confirmacion.modalidad and confirmacion.modalidad != 'General' %} ({{ confirmacion.modalidad }}){% endif %}</p>
+                        <p><strong>Fecha:</strong> {{ confirmacion.fecha }} | <strong>Hora:</strong> {{ confirmacion.hora }}</p>
+                        <p><strong>Total estudiantes:</strong> {{ confirmacion.total }}{% if confirmacion.actualizados and confirmacion.actualizados > 0 %} <span style="color: #059669; font-weight: 600;">({{ confirmacion.nuevos }} registrados, {{ confirmacion.actualizados }} actualizados)</span>{% endif %}</p>
+                    </div>
+                    <div class="acciones-confirmacion">
+                        <a href="{{ url_for('registrar_asistencia') }}" class="btn-filtrar">Registrar otra asistencia</a>
+                        {% if rol == 'docente' %}
+                            <a href="{{ url_for('docente') }}" class="btn-cancelar">Ir al panel principal</a>
+                        {% else %}
+                            <a href="{{ url_for('coordinador') }}" class="btn-cancelar">Ir al panel principal</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+
+                <!-- FILTROS DE SELECCIÓN ACADÉMICA (6 CAMPOS OBLIGATORIOS) -->
+                <div class="tarjeta-filtro">
+                    <h3>1. Selección Académica</h3>
+                    <form method="GET" action="{{ url_for('registrar_asistencia') }}" id="formSeleccion" class="formulario-filtro formulario-seleccion-academica">
+                        <!-- PRIMERA FILA: Grado, Grupo, Jornada -->
+                        <div class="fila-seleccion fila-tres-col">
+                            <!-- 1. GRADO -->
+                            <div class="grupo-filtro">
+                                <label for="gradoSelect">Grado:</label>
+                                <select name="grado" id="gradoSelect" required onchange="actualizarDependenciasGrado()">
+                                    <option value="">-- Seleccionar Grado --</option>
+                                    {% for g in grados %}
+                                        <option value="{{ g.Gra_Codigo }}" {% if grado_seleccionado == g.Gra_Codigo|string %}selected{% endif %}>
+                                            {% if g.Gra_Codigo == 0 %}Transición{% else %}Grado {{ g.Gra_NombreGrado }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 2. GRUPO -->
+                            <div class="grupo-filtro">
+                                <label for="grupoSelect">Grupo:</label>
+                                <select name="grupo" id="grupoSelect" required>
+                                    <option value="">-- Seleccionar Grupo --</option>
+                                    {% for gr in grupos %}
+                                        <option value="{{ gr.Gru_Codigo }}" {% if grupo_seleccionado == gr.Gru_Codigo|string %}selected{% endif %}>
+                                            {{ gr.Gru_NombreGrupo }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 3. JORNADA -->
+                            <div class="grupo-filtro">
+                                <label for="jornadaSelect">Jornada:</label>
+                                <select name="jornada" id="jornadaSelect" required>
+                                    <option value="">-- Seleccionar Jornada --</option>
+                                    {% for j in jornadas %}
+                                        <option value="{{ j }}" {% if jornada_seleccionada == j %}selected{% endif %}>{{ j }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- SEGUNDA FILA: Modalidad (10 y 11), Asignatura -->
+                        <div class="fila-seleccion fila-dos-col" id="filaModalidadAsignatura">
+                            <!-- MODALIDAD TÉCNICA (CONDICIONAL PARA GRADOS 10 Y 11) -->
+                            <div class="grupo-filtro" id="cajaModalidad" style="display: {% if grado_seleccionado in ['10', '11'] %}flex{% else %}none{% endif %};">
+                                <label for="modalidadSelect">Modalidad (10 y 11):</label>
+                                <select name="modalidad" id="modalidadSelect" onchange="actualizarAsignaturas()">
+                                    {% for m in modalidades %}
+                                        <option value="{{ m }}" {% if modalidad_seleccionada == m %}selected{% endif %}>{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 4. ASIGNATURA -->
+                            <div class="grupo-filtro" id="cajaAsignatura" style="{% if grado_seleccionado not in ['10', '11'] %}grid-column: 1 / -1;{% endif %}">
+                                <label for="asignaturaSelect">Asignatura:</label>
+                                <select name="asignatura" id="asignaturaSelect" required>
+                                    <option value="">-- Seleccionar Asignatura --</option>
+                                    {% for a in asignaturas %}
+                                        <option value="{{ a }}" {% if asignatura_seleccionada == a %}selected{% endif %}>{{ a }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- TERCERA FILA: Sede, Fecha de Registro, Botón Cargar Estudiantes -->
+                        <div class="fila-seleccion fila-tres-col-boton">
+                            <!-- 5. SEDE -->
+                            <div class="grupo-filtro">
+                                <label for="sedeSelect">Sede:</label>
+                                <select name="sede" id="sedeSelect" required>
+                                    <option value="">-- Seleccionar Sede --</option>
+                                    {% for s in sedes %}
+                                        <option value="{{ s }}" {% if sede_seleccionada == s %}selected{% endif %}>{{ s }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- 6. FECHA DE REGISTRO -->
+                            <div class="grupo-filtro">
+                                <label for="fechaSelect">Fecha de Registro:</label>
+                                <input type="date" name="fecha" id="fechaSelect" value="{{ fecha_seleccionada }}" required>
+                            </div>
+
+                            <!-- BOTÓN: CARGAR ESTUDIANTES -->
+                            <div class="grupo-filtro grupo-filtro-boton">
+                                <label class="label-espaciador">&nbsp;</label>
+                                <button type="submit" class="btn-filtrar btn-cargar-estudiantes" id="btnCargarEstudiantes">🔍 Cargar Estudiantes</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 2. TABLA DE ESTUDIANTES Y REGISTRO -->
+                {% if estudiantes is not none %}
+                    <div class="tarjeta-asistencia">
+                        <div class="encabezado-seccion-asistencia">
+                            <h3>2. Marcar Asistencia</h3>
+                        </div>
+
+                        <!-- RESUMEN VISIBLE DE LA SESIÓN ACADÉMICA -->
+                        <div class="tarjeta-resumen-sesion" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 5px solid #8E5BB7; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 1rem;">📋 Datos de la Sesión a Registrar:</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; font-size: 0.92rem; color: #334155;">
+                                <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">GRADO</span><strong>Grado {{ grado_seleccionado }}</strong></div>
+                                <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">GRUPO</span><strong>{{ grupo_nombre_sel or grupo_seleccionado }}</strong></div>
+                                <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">JORNADA</span><strong style="color: #8E5BB7;">{{ jornada_seleccionada }}</strong></div>
+                                <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">ASIGNATURA</span><strong style="color: #0284c7;">{{ asignatura_seleccionada }}</strong> {% if grado_seleccionado in ['10', '11'] %}<small style="color: #64748b;">({{ modalidad_seleccionada }})</small>{% endif %}</div>
+                                <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">SEDE</span><strong style="color: #10b981;">{{ sede_seleccionada }}</strong></div>
+                                <div><span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">FECHA</span><strong style="color: #dc2626;">{{ fecha_seleccionada }}</strong></div>
+                                <div>
+                                    <span style="color: #64748b; font-size: 0.82rem; display: block; font-weight: 600;">TOTAL ALUMNOS</span>
+                                    <strong style="color: #8E5BB7;">{{ estudiantes|length }} Estudiantes</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if estudiantes|length > 0 %}
+                            <form method="POST" action="{{ url_for('guardar_asistencia') }}">
+                                <input type="hidden" name="grado_id" value="{{ grado_seleccionado }}">
+                                <input type="hidden" name="grupo_id" value="{{ grupo_seleccionado }}">
+                                <input type="hidden" name="jornada_id" value="{{ jornada_seleccionada }}">
+                                <input type="hidden" name="asignatura_nombre" value="{{ asignatura_seleccionada }}">
+                                <input type="hidden" name="sede_nombre" value="{{ sede_seleccionada }}">
+                                <input type="hidden" name="modalidad_id" value="{{ modalidad_seleccionada }}">
+                                <input type="hidden" name="fecha_registro" value="{{ fecha_seleccionada }}">
+
+                                <div class="contenedor-tabla-scroll">
+                                    <table class="tabla-asistencia">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50px; text-align: center;">#</th>
+                                                <th>Estudiante</th>
+                                                <th style="text-align: center; width: 110px; color: #059669;">Presente</th>
+                                                <th style="text-align: center; width: 110px; color: #d97706;">Tarde</th>
+                                                <th style="text-align: center; width: 110px; color: #dc2626;">Ausente</th>
+                                                <th style="width: 220px;">Observación (Opcional)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for est in estudiantes %}
+                                            <tr>
+                                                <td style="text-align: center; color: #64748b;">
+                                                    {{ loop.index }}
+                                                    <input type="hidden" name="estudiantes_ids" value="{{ est.Est_CodEstudiante }}">
+                                                </td>
+                                                <td>
+                                                    <strong>{{ est.Est_Apellido }}, {{ est.Est_Nombre }}</strong>
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    <label style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 0;">
+                                                        <input type="radio" name="estado_{{ est.Est_CodEstudiante }}" value="Presente" 
+                                                               {% if est.estado_actual == 'Presente' or not est.estado_actual %}checked{% endif %} 
+                                                               required style="width: 18px; height: 18px; accent-color: #059669; cursor: pointer;">
+                                                        <span style="font-size: 0.82rem; color: #059669; font-weight: 600;">Presente</span>
+                                                    </label>
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    <label style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 0;">
+                                                        <input type="radio" name="estado_{{ est.Est_CodEstudiante }}" value="Tarde" 
+                                                               {% if est.estado_actual == 'Tarde' %}checked{% endif %} 
+                                                               required style="width: 18px; height: 18px; accent-color: #d97706; cursor: pointer;">
+                                                        <span style="font-size: 0.82rem; color: #d97706; font-weight: 600;">Tarde</span>
+                                                    </label>
+                                                </td>
+                                                <td style="text-align: center;">
+                                                    <label style="cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 0;">
+                                                        <input type="radio" name="estado_{{ est.Est_CodEstudiante }}" value="Ausente" 
+                                                               {% if est.estado_actual == 'Ausente' %}checked{% endif %} 
+                                                               required style="width: 18px; height: 18px; accent-color: #dc2626; cursor: pointer;">
+                                                        <span style="font-size: 0.82rem; color: #dc2626; font-weight: 600;">Ausente</span>
+                                                    </label>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="obs_{{ est.Est_CodEstudiante }}" value="{{ est.obs_existente or '' }}" placeholder="Observación..." class="input-obs">
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div style="display: flex; gap: 14px; margin-top: 20px;">
+                                    {% if rol == 'rectoria' %}
+                                        <button type="button" class="btn-guardar" disabled style="opacity: 0.6; cursor: not-allowed; background-color: #94a3b8;" title="Modo Solo Lectura: Rectoría no puede modificar datos">🔒 Solo Lectura (Rectoría)</button>
+                                        <a href="{{ url_for('rectoria') }}" class="btn-cancelar">Volver al Menú</a>
+                                    {% else %}
+                                        <button type="submit" class="btn-guardar">💾 Guardar Asistencia</button>
+                                        {% if rol == 'docente' %}
+                                            <a href="{{ url_for('docente') }}" class="btn-cancelar">Cancelar y Volver</a>
+                                        {% else %}
+                                            <a href="{{ url_for('coordinador') }}" class="btn-cancelar">Cancelar y Volver</a>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </form>
+                        {% elif estudiantes|length == 0 %}
+                            <p style="color: #64748b; padding: 16px 0;">ℹ️ No se encontraron estudiantes registrados para los criterios seleccionados.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+            {% endif %}
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+
+    <script>
+    function actualizarDependenciasGrado() {
+        const grado = document.getElementById('gradoSelect').value;
+        const cajaMod = document.getElementById('cajaModalidad');
+        const cajaAsig = document.getElementById('cajaAsignatura');
+        if (grado === '10' || grado === '11') {
+            if (cajaMod) cajaMod.style.display = 'flex';
+            if (cajaAsig) cajaAsig.style.gridColumn = 'auto';
+        } else {
+            if (cajaMod) cajaMod.style.display = 'none';
+            if (cajaAsig) cajaAsig.style.gridColumn = '1 / -1';
+        }
+
+        // Cargar Grupos para el grado seleccionado
+        fetch('/api/grupos_validos?grado=' + encodeURIComponent(grado))
+            .then(res => res.json())
+            .then(data => {
+                const grpSelect = document.getElementById('grupoSelect');
+                grpSelect.innerHTML = '<option value="">-- Seleccionar Grupo --</option>';
+                data.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g.id;
+                    opt.textContent = g.nombre;
+                    grpSelect.appendChild(opt);
+                });
+            })
+            .catch(err => console.error('Error cargando grupos:', err));
+
+        // Actualizar Asignaturas para el grado seleccionado
+        actualizarAsignaturas();
+    }
+
+    const REGLAS_ASIGNATURAS = {
+        generales: [
+            'Tecnología e Informática',
+            'Ciencias Naturales',
+            'Química',
+            'Inglés',
+            'Matemáticas',
+            'Lengua Castellana',
+            'Educación Artística',
+            'Educación Religiosa',
+            'Emprendimiento',
+            'Ética y Valores',
+            'Sociales'
+        ],
+        grados_8_9: [
+            'Tecnología e Informática',
+            'Ciencias Naturales',
+            'Química',
+            'Inglés',
+            'Matemáticas',
+            'Lengua Castellana',
+            'Educación Artística',
+            'Educación Religiosa',
+            'Emprendimiento',
+            'Ética y Valores',
+            'Sociales',
+            'Contabilidad'
+        ],
+        grados_10_11_general: [
+            'Tecnología e Informática',
+            'Ciencias Naturales',
+            'Química',
+            'Inglés',
+            'Matemáticas',
+            'Lengua Castellana',
+            'Educación Artística',
+            'Educación Religiosa',
+            'Emprendimiento',
+            'Ética y Valores',
+            'Sociales',
+            'Física',
+            'Filosofía',
+            'Ciencias Económicas y Políticas'
+        ],
+        grados_10_11_contable: [
+            'Ciencias Naturales',
+            'Química',
+            'Inglés',
+            'Matemáticas',
+            'Lengua Castellana',
+            'Educación Artística',
+            'Educación Religiosa',
+            'Emprendimiento',
+            'Ética y Valores',
+            'Sociales',
+            'Física',
+            'Filosofía',
+            'Contabilidad',
+            'Ciencias Económicas y Políticas'
+        ],
+        grados_10_11_software: [
+            'Tecnología e Informática',
+            'Ciencias Naturales',
+            'Química',
+            'Inglés',
+            'Matemáticas',
+            'Lengua Castellana',
+            'Educación Artística',
+            'Educación Religiosa',
+            'Emprendimiento',
+            'Ética y Valores',
+            'Sociales',
+            'Física',
+            'Filosofía',
+            'Ciencias Económicas y Políticas'
+        ]
+    };
+
+    function renderizarOpcionesAsignatura(lista, valorPreseleccionado) {
+        const asigSelect = document.getElementById('asignaturaSelect');
+        if (!asigSelect) return;
+        const valorActual = valorPreseleccionado || asigSelect.value;
+        asigSelect.innerHTML = '<option value="">-- Seleccionar Asignatura --</option>';
+        lista.forEach(function(nombre) {
+            const opt = document.createElement('option');
+            opt.value = nombre;
+            opt.textContent = nombre;
+            if (nombre === valorActual) {
+                opt.selected = true;
+            }
+            asigSelect.appendChild(opt);
+        });
+    }
+
+    function actualizarAsignaturas(valorPreseleccionado) {
+        const grado = document.getElementById('gradoSelect') ? document.getElementById('gradoSelect').value.trim() : '';
+        const modSelect = document.getElementById('modalidadSelect');
+        const modalidad = (grado === '10' || grado === '11') && modSelect ? modSelect.value : 'General';
+        const asigSelect = document.getElementById('asignaturaSelect');
+        if (!asigSelect) return;
+
+        let lista = REGLAS_ASIGNATURAS.generales;
+        const gNum = parseInt(grado, 10);
+
+        if (gNum >= 1 && gNum <= 7) {
+            lista = REGLAS_ASIGNATURAS.generales;
+        } else if (gNum === 8 || gNum === 9) {
+            lista = REGLAS_ASIGNATURAS.grados_8_9;
+        } else if (gNum === 10 || gNum === 11) {
+            if (modalidad.indexOf('Contable') !== -1) {
+                lista = REGLAS_ASIGNATURAS.grados_10_11_contable;
+            } else if (modalidad.indexOf('Software') !== -1 || modalidad.indexOf('Programación') !== -1 || modalidad.indexOf('Programacion') !== -1) {
+                lista = REGLAS_ASIGNATURAS.grados_10_11_software;
+            } else {
+                lista = REGLAS_ASIGNATURAS.grados_10_11_general;
+            }
+        } else {
+            lista = REGLAS_ASIGNATURAS.generales;
+        }
+
+        renderizarOpcionesAsignatura(lista, valorPreseleccionado);
+
+        // Sincronización adicional con servidor MySQL
+        if (grado) {
+            fetch('/api/asignaturas_validas?grado=' + encodeURIComponent(grado) + '&modalidad=' + encodeURIComponent(modalidad))
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (Array.isArray(data) && data.length > 0) {
+                        const nombres = data.map(function(d) { return d.nombre; });
+                        renderizarOpcionesAsignatura(nombres, valorPreseleccionado || asigSelect.value);
+                    }
+                })
+                .catch(function(err) { console.error('Error sincronizando asignaturas:', err); });
+        }
+    }
+
+    // Inicialización y Validación de campos obligatorios en el cliente
+    document.addEventListener('DOMContentLoaded', function() {
+        const gradoEl = document.getElementById('gradoSelect');
+        const asigSelect = document.getElementById('asignaturaSelect');
+        const form = document.getElementById('formSeleccion');
+
+        // Asegurar que el selector NUNCA esté vacío al cargar la página
+        if (asigSelect && asigSelect.options.length <= 1) {
+            actualizarAsignaturas('{{ asignatura_seleccionada }}');
+        }
+
+        if (gradoEl && gradoEl.value) {
+            const cajaMod = document.getElementById('cajaModalidad');
+            const cajaAsig = document.getElementById('cajaAsignatura');
+            if (gradoEl.value === '10' || gradoEl.value === '11') {
+                if (cajaMod) cajaMod.style.display = 'flex';
+                if (cajaAsig) cajaAsig.style.gridColumn = 'auto';
+            } else {
+                if (cajaMod) cajaMod.style.display = 'none';
+                if (cajaAsig) cajaAsig.style.gridColumn = '1 / -1';
+            }
+        }
+
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const grado = document.getElementById('gradoSelect') ? document.getElementById('gradoSelect').value.trim() : '';
+                const grupo = document.getElementById('grupoSelect') ? document.getElementById('grupoSelect').value.trim() : '';
+                const jornada = document.getElementById('jornadaSelect') ? document.getElementById('jornadaSelect').value.trim() : '';
+                const asignatura = document.getElementById('asignaturaSelect') ? document.getElementById('asignaturaSelect').value.trim() : '';
+                const sede = document.getElementById('sedeSelect') ? document.getElementById('sedeSelect').value.trim() : '';
+                const estudiante = document.getElementById('estudianteSelect') ? document.getElementById('estudianteSelect').value.trim() : '';
+
+                const faltantes = [];
+                if (!grado) faltantes.push('Grado');
+                if (!grupo) faltantes.push('Grupo');
+                if (!jornada) faltantes.push('Jornada');
+                if (!asignatura) faltantes.push('Asignatura');
+                if (!sede) faltantes.push('Sede');
+                if (!estudiante) faltantes.push('Nombre del estudiante');
+
+                const errorBanner = document.getElementById('alertaErrorCliente');
+                if (faltantes.length > 0) {
+                    e.preventDefault();
+                    if (errorBanner) {
+                        errorBanner.style.display = 'block';
+                        errorBanner.innerHTML = '<strong>Atención:</strong> Por favor completa todos los campos obligatorios antes de cargar estudiantes. Falta seleccionar: <strong>' + faltantes.join(', ') + '</strong>.';
+                        errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return false;
+                } else {
+                    if (errorBanner) {
+                        errorBanner.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        const estSelect = document.getElementById('estudianteSelect');
+        const grpSelect = document.getElementById('grupoSelect');
+        if (gradoEl && gradoEl.value && grpSelect && grpSelect.value) {
+            if (estSelect && estSelect.options.length <= 1) {
+                actualizarEstudiantes('{{ estudiante_seleccionado }}' || 'todos');
+            }
+        }
+    });
+    </script>
+</body>
+</html>
