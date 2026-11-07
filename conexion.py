@@ -1,18 +1,21 @@
+
 # -*- coding: utf-8 -*-
 import os
 import mysql.connector
 
-# Cargar variables opcionales desde .env en desarrollo sin sobrescribir variables de entorno de producción (Render)
+# Cargar variables de entorno desde .env sin sobrescribir
+# las variables configuradas en producción (Render).
 try:
     from dotenv import load_dotenv
     load_dotenv(override=False)
-except Exception:
+except ImportError:
     pass
+
 
 def obtener_conexion():
     """
-    Función para conectarse a la base de datos MySQL (local en XAMPP o remota en la nube).
-    Retorna el objeto de conexión activo o None si ocurre un error.
+    Conecta ASISTEC con MySQL local (XAMPP)
+    o TiDB Cloud mediante SSL.
     """
     try:
         host = os.environ.get("DB_HOST", "localhost")
@@ -30,27 +33,37 @@ def obtener_conexion():
             "charset": "utf8mb4"
         }
 
-        # Soporte seguro SSL/TLS para Aiven u otros proveedores en la nube
-        ssl_mode = os.environ.get("DB_SSL_MODE", "").strip().upper()
+        # Configuración SSL para TiDB Cloud.
         ssl_ca = os.environ.get("DB_SSL_CA", "").strip()
 
-        if ssl_ca and os.path.exists(ssl_ca):
-            config["ssl_ca"] = ssl_ca
-            config["ssl_verify_cert"] = True
-        elif ssl_mode in ("REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY"):
-            config["ssl_disabled"] = False
+        if ssl_ca:
+            if not os.path.isfile(ssl_ca):
+                raise FileNotFoundError(
+                    "No se encontró el certificado SSL: " + ssl_ca
+                )
+
+            config.update({
+                "ssl_ca": ssl_ca,
+                "ssl_verify_cert": True,
+                "ssl_verify_identity": True
+            })
 
         conexion = mysql.connector.connect(**config)
+
         return conexion
-    except mysql.connector.Error as error:
+
+    except (mysql.connector.Error, OSError, ValueError) as error:
         print(f"[ERROR CONEXION MYSQL]: {error}")
         return None
 
+
 if __name__ == "__main__":
-    print("Probando conexion a MySQL (asistec)...")
+    print("Probando conexión a la base de datos ASISTEC...")
+
     c = obtener_conexion()
+
     if c and c.is_connected():
-        print("[OK] Conexion exitosa a la base de datos asistec.")
+        print("[OK] Conexión exitosa a ASISTEC.")
         c.close()
     else:
         print("[ERROR] No se pudo conectar.")

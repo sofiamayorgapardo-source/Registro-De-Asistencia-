@@ -25,7 +25,7 @@ ASISTEC es una solución web académica diseñada para modernizar, agilizar y ce
 
 - **Backend:** Python 3.10+ / Flask 3.x
 - **Servidor WSGI de Producción:** Gunicorn
-- **Base de Datos:** MySQL / MariaDB (18 tablas relacionales)
+- **Base de Datos:** TiDB Cloud Starter (compatible con MySQL); XAMPP para desarrollo local.
 - **Frontend:** HTML5, CSS3 institucional y JavaScript nativo
 - **Procesamiento de Archivos:** `csv`, `openpyxl` (hojas de cálculo)
 - **Seguridad:** Werkzeug Security, Secrets
@@ -35,7 +35,7 @@ ASISTEC es una solución web académica diseñada para modernizar, agilizar y ce
 ## 📋 Requisitos del Sistema
 
 - **Python:** Versión 3.10 o superior.
-- **Base de Datos:** MySQL 8.0+ o MariaDB 10.4+ (vía XAMPP en desarrollo local o Aiven en la nube).
+- **Base de Datos:** TiDB Cloud Starter (compatible con MySQL); XAMPP para desarrollo local.
 - **Gestor de Paquetes:** `pip`.
 
 ---
@@ -137,32 +137,32 @@ Abre tu navegador web e ingresa a:
 
 ---
 
-## ☁️ Preparación para Despliegue en Render y Aiven
+## Preparacion para despliegue en Render y TiDB Cloud
 
-El proyecto está 100% preparado para ser alojado en la nube:
+La aplicacion ASISTEC utiliza Render para alojar Flask y TiDB Cloud Starter como base de datos compatible con MySQL.
 
-- **Plataforma Web:** [Render](https://render.com)
-  - **Tipo de Servicio:** Web Service (Python 3).
-  - **Build Command:** `pip install -r requirements.txt`
-  - **Start Command:** `gunicorn app:app` (definido en el `Procfile`).
-  - **Puerto:** Render asigna automáticamente el puerto mediante la variable `PORT`.
-- **Base de Datos:** [Aiven for MySQL](https://aiven.io) u otro proveedor compatible con MySQL.
-  - Conexión segura TLS/SSL mediante las variables de entorno correspondientes.
+- **Plataforma web:** Render.
+- **Base de datos:** TiDB Cloud Starter.
+- **Build Command:** `pip install -r requirements.txt`.
+- **Start Command:** `gunicorn app:app`.
+- **Puerto:** Render proporciona la variable `PORT`.
+- **Conexion:** MySQL Connector con SSL/TLS.
 
-### Variables de Entorno para Producción
+### Variables de entorno para Render
 
-En el panel de control de Render (sección **Environment Variables**), configura los siguientes parámetros:
+Configurar estas variables en Environment Variables del servicio de Render:
 
-| Variable | Descripción | Ejemplo / Valor |
-| :--- | :--- | :--- |
-| `FLASK_ENV` | Modo de ejecución de Flask | `production` |
-| `SECRET_KEY` | Clave criptográfica para firmas de sesión | *(Cadena aleatoria de 64 caracteres)* |
-| `DB_HOST` | Host o endpoint del servidor MySQL | `mysql-xxxx-asistec.aivencloud.com` |
-| `DB_PORT` | Puerto de conexión MySQL | `12345` |
-| `DB_USER` | Usuario de la base de datos | `avnadmin` |
-| `DB_PASSWORD` | Contraseña del usuario | *(Contraseña provista por Aiven)* |
-| `DB_NAME` | Nombre de la base de datos | `defaultdb` o `asistec` |
-| `DB_SSL_MODE` | Exigencia de cifrado SSL/TLS | `REQUIRED` |
+| Variable | Descripcion |
+| :--- | :--- |
+| `SECRET_KEY` | Clave secreta segura para produccion. |
+| `DB_HOST` | Host de TiDB Cloud. |
+| `DB_PORT` | `4000`. |
+| `DB_USER` | Usuario de TiDB Cloud. |
+| `DB_PASSWORD` | Contrasena privada de TiDB Cloud. |
+| `DB_NAME` | `asistec`. |
+| `DB_SSL_CA` | Ruta del certificado CA disponible en el entorno de Render. |
+
+No publicar contrasenas, claves privadas ni archivos `.env` en GitHub.
 
 ---
 
