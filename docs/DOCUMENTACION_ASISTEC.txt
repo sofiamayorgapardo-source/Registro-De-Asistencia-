@@ -1,0 +1,273 @@
+================================================================================
+DOCUMENTACIÓN TÉCNICA Y ACADÉMICA DEL SISTEMA ASISTEC
+================================================================================
+
+1. DESCRIPCIÓN GENERAL DEL PROYECTO
+--------------------------------------------------------------------------------
+Nombre del Sistema:
+ASISTEC — Sistema Inteligente de Registro de Asistencia Estudiantil
+
+Propósito:
+ASISTEC es una aplicación web académica diseñada para sistematizar, agilizar
+y controlar el registro diario de asistencia de los estudiantes en instituciones
+educativas. Permite eliminar el uso tradicional de planillas físicas en papel,
+reduciendo errores humanos, evitando pérdidas de información y facilitando la
+generación inmediata de estadísticas y reportes formales.
+
+Problema que resuelve:
+El registro manual en papel genera demoras en el aula, riesgo de alteración o
+pérdida de planillas, y dificulta el cálculo oportuno de porcentajes de inasistencia
+para coordinadores y docentes. ASISTEC centraliza toda la información en una base
+de datos relacional accesible en tiempo real mediante un navegador web.
+
+
+2. TECNOLOGÍAS UTILIZADAS Y SU FUNCIÓN
+--------------------------------------------------------------------------------
+- Python (Versión 3.10+):
+  Lenguaje de programación principal encargado de la lógica del sistema,
+  procesamiento de formularios, validación de datos, cálculo de estadísticas y
+  comunicación con la base de datos.
+
+- Flask:
+  Micro-framework web en Python que administra el enrutamiento de URLs, gestiona
+  las sesiones de usuario seguras y comunica las plantillas visuales con la lógica.
+
+- HTML5:
+  Lenguaje de marcado que define la estructura semántica y el contenido de las
+  páginas web (formularios, tablas, tarjetas, alertas y botones).
+
+- CSS3:
+  Hoja de estilos responsable de la presentación visual, tipografía, paleta de
+  colores, distribución responsiva y estilos especiales de impresión limpia (@media print).
+
+- MySQL / MariaDB:
+  Motor de base de datos relacional que almacena de manera persistente e íntegra
+  todos los registros de estudiantes, docentes, cursos, usuarios y asistencias.
+
+- XAMPP:
+  Paquete de software que provee el entorno de servidor local para MySQL (puerto 3306)
+  y la interfaz administrativa phpMyAdmin.
+
+- Google Chrome:
+  Navegador web utilizado como cliente para interactuar con la aplicación en
+  http://localhost:5000 y ejecutar la función de impresión de reportes.
+
+
+3. FUNCIONAMIENTO GENERAL DEL SISTEMA
+--------------------------------------------------------------------------------
+Flujo de comunicación:
+Usuario (Docente/Coordinador)
+  ↓
+Google Chrome (Navegador Web)
+  ↓ [Petición HTTP a http://localhost:5000]
+Flask (Servidor Web en Python)
+  ↓ [Validación de Sesión y Lógica de Negocio]
+Conector MySQL (mysql-connector-python)
+  ↓ [Consultas SQL parametrizadas]
+Base de Datos MySQL (asistec en XAMPP)
+  ↓ [Respuesta de Datos]
+Plantilla HTML + CSS Renderizada en Pantalla
+
+Explicación paso a paso:
+1. El usuario abre Google Chrome e ingresa a http://localhost:5000.
+2. Flask recibe la solicitud y presenta la pantalla de login (login.html).
+3. El usuario envía sus credenciales; Python las valida contra la tabla "usuarios" en MySQL.
+4. Si son válidas, Flask crea una sesión encriptada en el servidor y redirige al panel según su rol.
+5. Cada acción (registrar, consultar, ver estadísticas, reportes) envía peticiones a Flask,
+   el cual ejecuta consultas SQL seguras en MySQL y devuelve los datos formateados en HTML.
+
+
+4. ROLES DEL SISTEMA Y SUS PERMISOS
+--------------------------------------------------------------------------------
+A. Rol DOCENTE:
+- Iniciar sesión con sus credenciales institucionales.
+- Visualizar el panel del docente con acceso a sus módulos.
+- Registrar la asistencia de los estudiantes de sus cursos asignados (Grado y Grupo).
+- Asignar estados individuales: Presente, Ausente o Tarde.
+- Consultar el historial de asistencias registradas exclusivamente por él (filtrado por su id_docente).
+- Visualizar métricas y porcentajes de asistencia de sus grupos.
+- Generar e imprimir el reporte de asistencia de sus estudiantes.
+- Cerrar sesión de forma segura.
+
+B. Rol COORDINADOR:
+- Iniciar sesión con credenciales administrativas.
+- Visualizar el panel del coordinador con herramientas de supervisión institucional.
+- Consultar el historial general de asistencias de toda la institución (todos los docentes y grupos).
+- Aplicar filtros avanzados por Fecha, Grado, Grupo y Estado.
+- Visualizar estadísticas consolidadas a nivel institucional y desglose por grados/grupos.
+- Generar e imprimir reportes generales de asistencia de toda la sede educativa.
+- Cerrar sesión de forma segura.
+* Nota: El coordinador NO registra asistencia directamente en aula (función exclusiva de docentes).
+
+
+5. ESTRUCTURA DE LA BASE DE DATOS (asistec)
+--------------------------------------------------------------------------------
+Motor: MySQL / MariaDB (XAMPP - Puerto 3306)
+Base de datos: asistec
+
+Tablas existentes y su función:
+1.  usuarios: Almacena credenciales de acceso (id_usuario, usuario, password, rol, id_docente).
+2.  registroasistencia: Almacena cada toma de asistencia (Reg_CodRegistroAsistencia, Reg_CodEstudiante, Reg_CodDocente, Reg_FechaHoraIngreso, Reg_Observacion).
+3.  estudiantes: Información de alumnos (Est_CodEstudiante, Est_Nombre, Est_Apellido, Est_Cod_Grado, Est_Cod_Grupo, Est_Correo).
+4.  docentes: Información de profesores (Doc_CodDocentes, Doc_Nombres, Doc_Apellidos, Doc_Correo).
+5.  grado: Catálogo de grados escolares (Gra_Codigo, Gra_NombreGrado).
+6.  grupo: Catálogo de grupos (Gru_Codigo, Gru_NombreGrupo).
+7.  asignatura: Materias académicas (Asi_CodAsignatura, Asi_NomAsignatura).
+8.  sedes: Sedes de la institución (Sed_CodSede, Sed_NombreSede).
+9.  tipodocumento: Tipos de identificación (Tip_CodTipoDocumento, Tip_NombreTipoDocumento).
+10. acudiente: Datos de acudientes de estudiantes.
+11. registropadresfamilia: Registro adicional de padres de familia.
+12. eps: Catálogo de entidades de salud EPS.
+13. arl: Catálogo de administradoras de riesgos laborales ARL.
+
+
+6. MECANISMO DEL REGISTRO DE ASISTENCIA
+--------------------------------------------------------------------------------
+Cuando un docente registra la asistencia de un curso, el sistema realiza:
+1. Extracción automática del ID del docente autenticado desde la sesión (session['id_docente']).
+2. Generación en Python de la fecha y hora exacta del servidor (YYYY-MM-DD HH:MM:SS).
+3. Validación anti-duplicados para evitar registros dobles involuntarios por doble clic.
+4. Inserción de un registro individual por cada estudiante en la tabla `registroasistencia`:
+   - Reg_CodEstudiante: Código del estudiante seleccionado.
+   - Reg_CodDocente: Código del docente en sesión.
+   - Reg_FechaHoraIngreso: Cadena de fecha y hora exacta.
+   - Reg_Observacion: Estado seleccionado ('Presente', 'Ausente' o 'Tarde').
+
+
+7. DOCUMENTACIÓN DE LAS PLANTILLAS HTML
+--------------------------------------------------------------------------------
+Ubicación: Carpeta `html/`
+
+- login.html:
+  Formulario de autenticación con campos de usuario, contraseña y caja de mensajes de error.
+- docente.html:
+  Panel principal del docente con bienvenida personalizada y botones a los 4 módulos disponibles.
+- coordinador.html:
+  Panel principal del coordinador con bienvenida y accesos a los módulos de supervisión.
+- registrar_asistencia.html:
+  Formulario en dos pasos: primero selección de Grado/Grupo y luego tabla interactiva de estudiantes con selectores de estado.
+- consultar_asistencia.html:
+  Módulo de búsqueda con filtros dinámicos (Fecha, Grado, Grupo, Estado), tarjetas de resumen y tabla de resultados con insignias de color.
+- estadisticas.html:
+  Tablero con métricas clave (Total, Presentes, Ausentes, Tardes), porcentajes automáticos, barra visual proporcional y tablas por grado y grupo.
+- reporte.html:
+  Documento formal de asistencia con encabezado institucional, metadatos, resumen y botón nativo de impresión limpia para Google Chrome.
+
+
+8. DOCUMENTACIÓN DE LAS RUTAS FLASK (app.py)
+--------------------------------------------------------------------------------
+- GET  / : Redirige al panel correspondiente si hay sesión activa, o al login.
+- GET/POST /login : Procesa el inicio de sesión y valida las credenciales en MySQL.
+- GET  /docente : Muestra el panel principal del Docente (protegido por rol 'docente').
+- GET  /coordinador : Muestra el panel del Coordinador (protegido por rol 'coordinador').
+- GET  /registrar_asistencia : Carga el selector de grado/grupo y lista de alumnos.
+- POST /guardar_asistencia : Recibe los estados de los alumnos y los inserta en `registroasistencia`.
+- GET  /consultar_asistencia : Consulta asistencias aplicando filtros dinámicos parametrizados.
+- GET  /estadisticas : Calcula totales agregados, porcentajes y resúmenes por grado y grupo.
+- GET  /reporte : Genera la vista formal de reporte para consultar o imprimir en Chrome.
+- GET  /logout : Destruye la sesión activa y redirige al login.
+
+
+9. SEGURIDAD IMPLEMENTADA
+--------------------------------------------------------------------------------
+- Control de Sesiones:
+  Uso de `flask.session` firmado con clave secreta (`secret_key`).
+- Protección de Rutas Internas:
+  Verificación obligatoria de `session['usuario']` al inicio de cada función. Si no existe,
+  se redirige inmediatamente a `/login`.
+- Control Estricto de Roles:
+  Validación en backend en Python; un docente no puede ejecutar acciones de coordinador
+  ni un coordinador puede registrar asistencia en aula.
+- Scoping de Datos por Docente:
+  El docente únicamente puede consultar asistencias filtradas por su `id_docente` de sesión.
+- Consultas SQL Parametrizadas:
+  Uso de tuplas y marcadores `%s` en todas las consultas MySQL para prevenir inyecciones SQL.
+- Manejo Amigable de Excepciones:
+  Si MySQL se desconecta, se muestra un mensaje claro al usuario sin exponer trazas técnicas internas.
+
+
+10. GUÍA DE EJECUCIÓN PASO A PASO
+--------------------------------------------------------------------------------
+Paso 1: Abrir el panel de control de XAMPP.
+Paso 2: Iniciar el servicio de MySQL (presionar "Start").
+Paso 3: Verificar que la base de datos "asistec" esté disponible en phpMyAdmin.
+Paso 4: Abrir una terminal en la carpeta del proyecto y ejecutar:
+        python app.py
+Paso 5: Abrir Google Chrome e ingresar exactamente a:
+        http://localhost:5000
+Paso 6: Iniciar sesión con un usuario de prueba:
+        - Docente: docente1 / 1234
+        - Coordinador: coordinador / admin123
+
+
+11. ESTRUCTURA FÍSICA DEL PROYECTO
+--------------------------------------------------------------------------------
+ASISTEC/
+├── html/                         -> Plantillas HTML del sistema
+│   ├── login.html
+│   ├── docente.html
+│   ├── coordinador.html
+│   ├── registrar_asistencia.html
+│   ├── consultar_asistencia.html
+│   ├── estadisticas.html
+│   └── reporte.html
+├── css/                          -> Estilos visuales
+│   └── style.css
+├── bd/                           -> Base de datos
+│   └── asistec.sql
+├── app.py                        -> Archivo principal de la aplicación Flask
+├── conexion.py                   -> Módulo de conexión a MySQL
+├── README.txt                    -> Guía rápida y de entrega
+└── DOCUMENTACION_ASISTEC.txt     -> Documentación técnica y académica completa
+
+
+================================================================================
+EXPLICACIÓN PARA PRESENTACIÓN (GUÍA DE PREGUNTAS Y RESPUESTAS)
+================================================================================
+
+1. ¿Qué es ASISTEC?
+Es un sistema web académico desarrollado para registrar, consultar y generar
+reportes de asistencia estudiantil en tiempo real.
+
+2. ¿Qué problema resuelve?
+Elimina las planillas físicas de papel, evita la pérdida de registros, previene
+errores de cálculo y agiliza la toma de asistencia en el aula.
+
+3. ¿Por qué utilizaron MySQL?
+Porque es un motor de base de datos relacional estándar, confiable, rápido y seguro
+para organizar la información mediante tablas relacionadas (estudiantes, docentes, asistencias).
+
+4. ¿Para qué sirve Python?
+Es el lenguaje que procesa toda la lógica del sistema: recibe los datos del formulario,
+valida las contraseñas, calcula los porcentajes y realiza las consultas a la base de datos.
+
+5. ¿Para qué sirve Flask?
+Es el micro-framework que conecta Python con el navegador web, permitiendo crear rutas
+(como /login, /registrar_asistencia) y renderizar las páginas HTML.
+
+6. ¿Qué hace HTML?
+Define la estructura, textos, tablas y formularios que el usuario visualiza e interactúa
+en pantalla.
+
+7. ¿Qué hace CSS?
+Aplica el diseño visual, colores institucionales, fuentes, espaciados y la regla
+de impresión (@media print) para que los reportes salgan limpios en papel.
+
+8. ¿Qué hace XAMPP?
+Proporciona el entorno de servidor local donde se ejecuta MySQL en el puerto 3306
+y phpMyAdmin para administrar la base de datos.
+
+9. ¿Qué diferencia existe entre Docente y Coordinador?
+- El Docente solo puede tomar asistencia, consultar métricas y generar reportes de sus
+  propios grupos asignados.
+- El Coordinador tiene una visión institucional general para supervisar todos los cursos,
+  docentes y estadísticas globales, sin tomar asistencia en el aula.
+
+10. ¿Dónde se almacenan las asistencias?
+En la tabla `registroasistencia` de la base de datos `asistec` en MySQL, registrando el código
+del estudiante, el código del docente, la fecha/hora y el estado (Presente, Ausente, Tarde).
+
+11. ¿Cómo se accede al sistema?
+Iniciando MySQL en XAMPP, ejecutando `python app.py` y abriendo en Google Chrome la
+dirección http://localhost:5000.
+================================================================================

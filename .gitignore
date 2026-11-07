@@ -1,0 +1,58 @@
+# =========================================================================
+# ASISTEC - Archivo de Exclusiones de Git (.gitignore)
+# =========================================================================
+
+# Variables de entorno y credenciales privadas
+.env
+.env.*
+!.env.example
+
+# Bytecode y compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Configuraciones de editores e IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+
+# Pruebas y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Registros y logs del sistema
+*.log
+logs/
+
+# Archivos temporales del sistema operativo
+*.tmp
+*.bak
+*.swp
+*~
+Thumbs.db
+.DS_Store
+
+# Respaldos de base de datos con datos reales o sensibles
+bd/asistec_backup.sql
+*.sql.bak
+*.dump
+
+# Archivos de exportación / importación con información sensible de estudiantes
+*.csv
+*.xlsx
+estudiantes_asistec_*.csv

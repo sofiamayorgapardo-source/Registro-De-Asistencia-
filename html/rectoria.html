@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - PANEL RECTORÍA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol rol-rectoria">Rectoría</span>
+            </div>
+            <div class="usuario-info">
+                <span>Rector(a): <strong>{{ nombre or usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">🚪 Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="tarjeta-bienvenida">
+                <h2>PANEL RECTORÍA</h2>
+                <p>Bienvenido al módulo directivo de supervisión institucional de <strong>ASISTEC</strong>.</p>
+                <div class="info-usuario-caja">
+                    <p><strong>Usuario activo:</strong> {{ usuario }}</p>
+                    <p><strong>Nombre:</strong> {{ nombre }}</p>
+                    <p><strong>Rol asignado:</strong> Rectoría (Solo Lectura)</p>
+                </div>
+            </div>
+
+            <!-- MÓDULOS DE SUPERVISIÓN INSTITUCIONAL -->
+            <div class="tarjeta-modulo">
+                <h3>MÓDULOS DE SUPERVISIÓN INSTITUCIONAL</h3>
+                <p style="margin-bottom: 18px;">Selecciona una opción para consultar métricas, reportes y registros escolares de toda la institución:</p>
+                <div class="cuadricula-modulos-operativos">
+                    <a href="{{ url_for('estadisticas') }}" class="btn-modulo-item">📈 Ver estadísticas generales</a>
+                    <a href="{{ url_for('reporte') }}" class="btn-modulo-item">📄 Ver reportes institucionales</a>
+                    <a href="{{ url_for('consultar_asistencia') }}" class="btn-modulo-item">🔍 Consultar inasistencia general</a>
+                    <a href="{{ url_for('registro_inasistencia') }}" class="btn-modulo-item">📝 Registro inasistencia (Consulta)</a>
+                    <a href="{{ url_for('gestion_estudiantes') }}" class="btn-modulo-item">👥 Consultar estudiantes (Solo Lectura)</a>
+                </div>
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+</body>
+</html>

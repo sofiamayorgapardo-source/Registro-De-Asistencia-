@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Consultar Asistencia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol {% if rol == 'coordinador' %}rol-coordinador{% elif rol == 'rectoria' %}rol-rectoria{% endif %}">
+                    {{ 'Rectoría' if rol == 'rectoria' else rol|capitalize }}
+                </span>
+            </div>
+            <div class="usuario-info">
+                <span>{{ 'Rector' if rol == 'rectoria' else rol|capitalize }}: <strong>{{ usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="barra-superior-modulo">
+                <h2>📊 Consultar Asistencia {% if rol == 'docente' %}(Mis Registros){% else %}(General){% endif %}</h2>
+                {% if rol == 'docente' %}
+                    <a href="{{ url_for('docente') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% elif rol == 'rectoria' %}
+                    <a href="{{ url_for('rectoria') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% else %}
+                    <a href="{{ url_for('coordinador') }}" class="btn-volver">⬅ Volver al Menú</a>
+                {% endif %}
+            </div>
+
+            {% if error_validacion %}
+                <div class="alerta error">
+                    <strong>{{ error_validacion }}</strong>
+                </div>
+            {% endif %}
+
+            <!-- FILTROS -->
+            <div class="tarjeta-filtro">
+                <h3>Filtros de Asistencia</h3>
+                <form method="GET" action="{{ url_for('consultar_asistencia') }}" class="formulario-filtro formulario-consultar-asistencia">
+                    <!-- PRIMERA FILA: Nombre del estudiante, Fecha, Grado, Grupo -->
+                    <div class="fila-asistencia fila-cuatro-col">
+                        <div class="grupo-filtro grupo-filtro-estudiante">
+                            <label for="estudianteSelect">Nombre del estudiante:</label>
+                            <select name="estudiante" id="estudianteSelect">
+                                <option value="">-- Seleccionar Estudiante --</option>
+                                {% if lista_estudiantes_filtro and lista_estudiantes_filtro|length > 0 %}
+                                    <option value="todos" {% if filtros.estudiante == 'todos' %}selected{% endif %}>-- Todos los Estudiantes ({{ lista_estudiantes_filtro|length }}) --</option>
+                                    {% for est in lista_estudiantes_filtro %}
+                                        <option value="{{ est.Est_CodEstudiante }}" {% if filtros.estudiante == est.Est_CodEstudiante|string or filtros.estudiante == est.Est_Nombre or filtros.estudiante == est.Est_Apellido %}selected{% endif %}>
+                                            {{ est.Est_Apellido }}, {{ est.Est_Nombre }}
+                                        </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <div class="grupo-filtro">
+                            <label for="fecha">Fecha:</label>
+                            <input type="date" id="fecha" name="fecha" value="{{ filtros.fecha }}">
+                        </div>
+
+                        <div class="grupo-filtro">
+                            <label for="grado">Grado (1 al 11):</label>
+                            <select name="grado" id="grado" onchange="cargarGruposYAsignaturasFiltro()">
+                                <option value="">-- Todos los grados (1 a 11) --</option>
+                                {% for g in grados %}
+                                    <option value="{{ g.Gra_Codigo }}" {% if filtros.grado == g.Gra_Codigo|string %}selected{% endif %}>
+                                        {% if g.Gra_Codigo == 0 %}Transición{% else %}Grado {{ g.Gra_NombreGrado }}{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="grupo-filtro">
+                            <label for="grupo">Grupo:</label>
+                            <select name="grupo" id="grupo" onchange="actualizarEstudiantes()">
+                                <option value="">-- Todos los grupos --</option>
+                                {% for gr in grupos %}
+                                    <option value="{{ gr.Gru_Codigo }}" {% if filtros.grupo == gr.Gru_Codigo|string %}selected{% endif %}>
+                                        {{ gr.Gru_NombreGrupo }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SEGUNDA FILA: Modalidad Técnica, Asignatura, Estado -->
+                    <div class="fila-asistencia fila-tres-col-asistencia" id="filaModAsigEstFiltro">
+                        <div class="grupo-filtro" id="cajaModFiltro" style="display: {% if filtros.grado in ['10', '11'] %}flex{% else %}none{% endif %};">
+                            <label for="modalidad">Modalidad Técnica:</label>
+                            <select name="modalidad" id="modalidad" onchange="cargarAsignaturasFiltro()">
+                                {% for m in modalidades %}
+                                    <option value="{{ m }}" {% if filtros.modalidad == m %}selected{% endif %}>
+                                        {{ m }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="grupo-filtro" id="cajaAsigFiltro" style="{% if filtros.grado not in ['10', '11'] %}grid-column: 1 / 3;{% endif %}">
+                            <label for="asignatura">Asignatura:</label>
+                            <select name="asignatura" id="asignatura">
+                                <option value="">-- Todas las asignaturas --</option>
+                                {% if filtros.asignatura %}
+                                    <option value="{{ filtros.asignatura }}" selected>{{ filtros.asignatura }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <div class="grupo-filtro" id="cajaEstadoFiltro">
+                            <label for="estado">Estado:</label>
+                            <select name="estado" id="estado">
+                                <option value="">-- Todos los estados --</option>
+                                <option value="Presente" {% if filtros.estado == 'Presente' %}selected{% endif %}>Presente</option>
+                                <option value="Ausente" {% if filtros.estado == 'Ausente' %}selected{% endif %}>Ausente</option>
+                                <option value="Tarde" {% if filtros.estado == 'Tarde' %}selected{% endif %}>Tarde</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- TERCERA FILA: Botones Filtrar y Limpiar -->
+                    <div class="fila-asistencia fila-botones-asistencia">
+                        <button type="submit" class="btn-filtrar btn-filtrar-consulta">🔍 Filtrar</button>
+                        <a href="{{ url_for('consultar_asistencia') }}" class="btn-limpiar btn-limpiar-consulta">🔄 Limpiar</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- RESUMEN -->
+            <div class="tarjeta-resumen-metricas">
+                <div class="metrica-item">
+                    <span class="metrica-titulo">Total Registros</span>
+                    <span class="metrica-valor">{{ resumen.total }}</span>
+                </div>
+                <div class="metrica-item metrica-presente">
+                    <span class="metrica-titulo">Presentes</span>
+                    <span class="metrica-valor">{{ resumen.presentes }}</span>
+                </div>
+                <div class="metrica-item metrica-ausente">
+                    <span class="metrica-titulo">Ausentes</span>
+                    <span class="metrica-valor">{{ resumen.ausentes }}</span>
+                </div>
+                <div class="metrica-item metrica-tarde">
+                    <span class="metrica-titulo">Tardes</span>
+                    <span class="metrica-valor">{{ resumen.tardes }}</span>
+                </div>
+            </div>
+
+            <!-- TABLA DE ASISTENCIA CON LAS 8 COLUMNAS REQUERIDAS -->
+            <div class="tarjeta-asistencia">
+                <h3>Registros Encontrados</h3>
+
+                {% if registros and registros|length > 0 %}
+                    <div class="contenedor-tabla-scroll">
+                        <table class="tabla-asistencia">
+                            <thead>
+                                <tr>
+                                    <th>Estudiante</th>
+                                    <th>Grado</th>
+                                    <th>Grupo</th>
+                                    <th>Asignatura</th>
+                                    <th>Docente</th>
+                                    <th>Fecha / Hora</th>
+                                    <th>Estado</th>
+                                    <th>Observación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in registros %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ r.Est_Nombre }} {{ r.Est_Apellido }}</strong>
+                                        <div style="font-size: 0.8rem; color: #64748b;">Cod: {{ r.Est_CodEstudiante }}</div>
+                                    </td>
+                                    <td>{{ 'Grado ' ~ r.Gra_NombreGrado if r.Gra_NombreGrado else 'N/A' }}</td>
+                                    <td>{{ r.Gru_NombreGrupo if r.Gru_NombreGrupo else 'N/A' }}</td>
+                                    <td>{{ r.Asignatura }}</td>
+                                    <td>{{ r.Docente }}</td>
+                                    <td>{{ r.Fecha }} {{ r.Hora }}</td>
+                                    <td>
+                                        {% if 'presente' in r.Estado|lower %}
+                                            <span class="insignia-estado estado-presente">Presente</span>
+                                        {% elif 'ausente' in r.Estado|lower %}
+                                            <span class="insignia-estado estado-ausente">Ausente</span>
+                                        {% elif 'tarde' in r.Estado|lower %}
+                                            <span class="insignia-estado estado-tarde">Tarde</span>
+                                        {% else %}
+                                            <span class="insignia-estado">{{ r.Estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ r.Observacion }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p style="color: #64748b; padding: 16px 0;">ℹ️ No se encontraron registros de asistencia con los filtros seleccionados.</p>
+                {% endif %}
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+
+    <script>
+    function cargarGruposYAsignaturasFiltro() {
+        const grado = document.getElementById('grado').value;
+        const cajaMod = document.getElementById('cajaModFiltro');
+        const cajaAsig = document.getElementById('cajaAsigFiltro');
+        if (grado === '10' || grado === '11') {
+            if (cajaMod) cajaMod.style.display = 'flex';
+            if (cajaAsig) cajaAsig.style.gridColumn = 'auto';
+        } else {
+            if (cajaMod) cajaMod.style.display = 'none';
+            if (cajaAsig) cajaAsig.style.gridColumn = '1 / 3';
+        }
+
+        fetch('/api/grupos_validos?grado=' + encodeURIComponent(grado))
+            .then(res => res.json())
+            .then(data => {
+                const grpSelect = document.getElementById('grupo');
+                grpSelect.innerHTML = '<option value="">-- Todos los grupos --</option>';
+                data.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g.id;
+                    opt.textContent = g.nombre;
+                    grpSelect.appendChild(opt);
+                });
+                actualizarEstudiantes();
+            });
+
+        cargarAsignaturasFiltro();
+    }
+
+    function cargarAsignaturasFiltro() {
+        const grado = document.getElementById('grado').value;
+        const modSelect = document.getElementById('modalidad');
+        const modalidad = modSelect ? modSelect.value : 'General';
+
+        fetch('/api/asignaturas_validas?grado=' + encodeURIComponent(grado) + '&modalidad=' + encodeURIComponent(modalidad))
+            .then(res => res.json())
+            .then(data => {
+                const asigSelect = document.getElementById('asignatura');
+                asigSelect.innerHTML = '<option value="">-- Todas las asignaturas --</option>';
+                data.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.nombre;
+                    opt.textContent = a.nombre;
+                    asigSelect.appendChild(opt);
+                });
+            });
+    }
+
+    // Inicializar asignaturas dinámicas al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        const gradoEl = document.getElementById('grado');
+        if (gradoEl) {
+            const gradoVal = gradoEl.value;
+            const cajaMod = document.getElementById('cajaModFiltro');
+            const cajaAsig = document.getElementById('cajaAsigFiltro');
+            if (gradoVal === '10' || gradoVal === '11') {
+                if (cajaMod) cajaMod.style.display = 'flex';
+                if (cajaAsig) cajaAsig.style.gridColumn = 'auto';
+            } else {
+                if (cajaMod) cajaMod.style.display = 'none';
+                if (cajaAsig) cajaAsig.style.gridColumn = '1 / 3';
+            }
+            if (gradoVal) {
+                cargarAsignaturasFiltro();
+            }
+        }
+    });
+    
+    function actualizarEstudiantes(valorPreseleccionado) {
+        const grado = document.getElementById('grado') ? document.getElementById('grado').value.trim() : '';
+        const grupo = document.getElementById('grupo') ? document.getElementById('grupo').value.trim() : '';
+        const estSelect = document.getElementById('estudianteSelect');
+        if (!estSelect) return;
+
+        if (!grado || !grupo) {
+            estSelect.innerHTML = '<option value="">-- Seleccionar Estudiante --</option>';
+            return;
+        }
+
+        const url = '/api/estudiantes_validos?grado=' + encodeURIComponent(grado) + '&grupo=' + encodeURIComponent(grupo);
+
+        fetch(url)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                const valActual = valorPreseleccionado || estSelect.value;
+                estSelect.innerHTML = '<option value="">-- Seleccionar Estudiante --</option>';
+                if (Array.isArray(data) && data.length > 0) {
+                    const optTodos = document.createElement('option');
+                    optTodos.value = 'todos';
+                    optTodos.textContent = '-- Todos los Estudiantes (' + data.length + ') --';
+                    if (valActual === 'todos') {
+                        optTodos.selected = true;
+                    }
+                    estSelect.appendChild(optTodos);
+
+                    data.forEach(function(est) {
+                        const opt = document.createElement('option');
+                        opt.value = est.id;
+                        opt.textContent = est.apellido + ', ' + est.nombre;
+                        if (String(est.id) === String(valActual)) {
+                            opt.selected = true;
+                        }
+                        estSelect.appendChild(opt);
+                    });
+                } else {
+                    const optVacio = document.createElement('option');
+                    optVacio.value = '';
+                    optVacio.disabled = true;
+                    optVacio.textContent = 'ℹ️ No hay estudiantes para esta selección';
+                    estSelect.appendChild(optVacio);
+                }
+            })
+            .catch(function(err) { console.error('Error cargando estudiantes:', err); });
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASISTEC - Panel del Coordinador</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="contenedor-panel">
+        <header class="barra-navegacion">
+            <div class="marca">
+                <h1>ASISTEC</h1>
+                <span class="etiqueta-rol rol-coordinador">Coordinador</span>
+            </div>
+            <div class="usuario-info">
+                <span>Coordinador: <strong>{{ session.get('nombre') or usuario }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <main class="contenido-panel">
+            <div class="tarjeta-bienvenida">
+                <h2>Bienvenido, {{ session.get('nombre') or usuario }}</h2>
+                <p>Has iniciado sesión en el panel de supervisión institucional de <strong>ASISTEC</strong>.</p>
+                <div class="info-usuario-caja">
+                    <p><strong>Coordinador:</strong> {{ session.get('nombre') or usuario }}</p>
+                    <p><strong>Usuario activo:</strong> {{ usuario }}</p>
+                    <p><strong>Rol asignado:</strong> Coordinador</p>
+                </div>
+            </div>
+
+            <!-- MÓDULO ESPECIAL: GESTIÓN DE ESTUDIANTES Y CONTROL DE PERMISOS -->
+            <div class="tarjeta-modulo" style="margin-bottom: 24px; border-left: 5px solid #8E5BB7;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">ADMINISTRACIÓN DE MATRÍCULA</h3>
+                    <a href="{{ url_for('gestion_estudiantes') }}" class="btn-modulo-item" style="display: inline-flex; width: auto; padding: 12px 24px; background-color: #8E5BB7;">⚙️ GESTIÓN DE ESTUDIANTES</a>
+                </div>
+                <p style="margin-bottom: 14px; font-size: 0.95rem; color: #475569;">Gestión anual de estudiantes, cambios de grado/grupo, retiros y promociones escolares.</p>
+                
+                <!-- APARTADO: DOCENTES REGISTRADOS Y PERMISOS -->
+                <div class="seccion-docentes-permisos">
+                    <h4>👥 DOCENTES REGISTRADOS Y PERMISOS</h4>
+                    <p style="margin-bottom: 16px; font-size: 0.92rem; color: #475569;">
+                        Supervisa las cuentas de docentes registradas y autoriza o revoca el permiso para gestionar la matrícula y cargar estudiantes en el sistema.
+                    </p>
+
+                    <!-- TARJETAS DE RESUMEN (MÉTRICAS RÁPIDAS) -->
+                    <div class="cuadricula-metricas-docentes">
+                        <div class="tarjeta-metrica-docente metrica-total">
+                            <span class="metrica-etiqueta">Total docentes registrados</span>
+                            <span class="metrica-numero" id="contador-total-docentes">{{ total_docentes }}</span>
+                        </div>
+                        <div class="tarjeta-metrica-docente metrica-autorizados">
+                            <span class="metrica-etiqueta">Docentes autorizados</span>
+                            <span class="metrica-numero" id="contador-total-autorizados">{{ total_autorizados }}</span>
+                        </div>
+                        <div class="tarjeta-metrica-docente metrica-sin-permiso">
+                            <span class="metrica-etiqueta">Docentes sin autorización</span>
+                            <span class="metrica-numero" id="contador-total-sin-permiso">{{ total_sin_permiso }}</span>
+                        </div>
+                    </div>
+
+                    <!-- BARRA DE BÚSQUEDA Y FILTROS -->
+                    <div class="barra-filtros-docentes">
+                        <input type="text" id="filtro-busqueda-docente" class="input-busqueda-docente" placeholder="🔍 Buscar por docente o usuario..." onkeyup="filtrarDocentes()" oninput="filtrarDocentes()">
+                        
+                        <select id="filtro-area-docente" class="select-filtro-docente" onchange="filtrarDocentes()">
+                            <option value="">Todas las áreas principales</option>
+                            {% for area in todas_areas %}
+                            <option value="{{ area|lower }}">{{ area }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <select id="filtro-permiso-docente" class="select-filtro-docente" onchange="filtrarDocentes()">
+                            <option value="todos">Todos los docentes</option>
+                            <option value="autorizado">Solo autorizados</option>
+                            <option value="sin_permiso">Solo sin permiso</option>
+                        </select>
+                    </div>
+
+                    <!-- TABLA DE DOCENTES Y PERMISOS -->
+                    <div class="contenedor-tabla-docentes">
+                        {% if not docentes_registrados %}
+                        <div style="padding: 24px; text-align: center; color: #64748b; font-style: italic;" id="msg-sin-docentes">
+                            «Todavía no hay docentes registrados»
+                        </div>
+                        {% else %}
+                        <table class="tabla-docentes-permisos" id="tabla-docentes-permisos">
+                            <thead>
+                                <tr>
+                                    <th>Nombre del docente</th>
+                                    <th>Usuario</th>
+                                    <th>Área principal</th>
+                                    <th>Áreas secundarias</th>
+                                    <th style="text-align: center;">Permiso de matrícula</th>
+                                    <th style="text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-docentes-permisos">
+                                {% for d in docentes_registrados %}
+                                <tr id="fila-docente-{{ d.id_usuario }}"
+                                    data-nombre="{{ d.nombre|lower }}"
+                                    data-usuario="{{ d.usuario|lower }}"
+                                    data-area="{{ d.area_principal|lower }}"
+                                    data-permiso="{{ 'autorizado' if d.permiso_matricula == 1 else 'sin_permiso' }}">
+                                    <td><strong>{{ d.nombre }}</strong></td>
+                                    <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #475569;">{{ d.usuario }}</code></td>
+                                    <td>{{ d.area_principal }}</td>
+                                    <td style="color: {% if d.areas_secundarias == 'Ninguna' %}#94a3b8{% else %}#334155{% endif %};">
+                                        {{ d.areas_secundarias }}
+                                    </td>
+                                    <td style="text-align: center;" id="celda-badge-{{ d.id_usuario }}">
+                                        {% if d.permiso_matricula == 1 %}
+                                        <span class="badge-permiso badge-autorizado">AUTORIZADO</span>
+                                        {% else %}
+                                        <span class="badge-permiso badge-sin-permiso">SIN PERMISO</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="text-align: center;" id="celda-accion-{{ d.id_usuario }}">
+                                        {% if d.permiso_matricula == 1 %}
+                                        <button type="button" class="btn-accion-permiso btn-quitar" onclick="abrirModalPermiso({{ d.id_usuario }}, '{{ d.nombre|escape }}', 'quitar')">
+                                            Quitar permiso
+                                        </button>
+                                        {% else %}
+                                        <button type="button" class="btn-accion-permiso btn-autorizar" onclick="abrirModalPermiso({{ d.id_usuario }}, '{{ d.nombre|escape }}', 'autorizar')">
+                                            Autorizar carga de estudiantes
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <div id="msg-sin-resultados-filtro" style="display: none; padding: 20px; text-align: center; color: #64748b; font-style: italic;">
+                            No se encontraron docentes con los filtros seleccionados.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- MÓDULOS OPERATIVOS DE ASISTENCIA -->
+            <div class="tarjeta-modulo">
+                <h3>MÓDULOS OPERATIVOS DE ASISTENCIA</h3>
+                <p style="margin-bottom: 18px;">Supervisión institucional general de asistencia:</p>
+                <div class="cuadricula-modulos-operativos">
+                    <a href="{{ url_for('registro_inasistencia') }}" class="btn-modulo-item">📝 Registro de inasistencia</a>
+                    <a href="{{ url_for('consultar_asistencia') }}" class="btn-modulo-item">🔍 Consultar inasistencia</a>
+                    <a href="{{ url_for('estadisticas') }}" class="btn-modulo-item">📈 Estadísticas</a>
+                    <a href="{{ url_for('reporte') }}" class="btn-modulo-item">📄 Reportes de inasistencia</a>
+                </div>
+            </div>
+        </main>
+
+        <footer class="pie-panel">
+            <p>ASISTEC &copy; 2026 - Sistema Inteligente de Registro de Asistencia</p>
+        </footer>
+    </div>
+
+    <!-- VENTANA MODAL DE CONFIRMACIÓN DE PERMISO -->
+    <div id="modal-confirmacion-permiso" class="modal-overlay-permiso">
+        <div class="modal-contenedor-permiso">
+            <div class="modal-cabecera-permiso">
+                <h3 id="modal-titulo-permiso">Confirmar permiso</h3>
+                <button type="button" class="modal-btn-cerrar-permiso" onclick="cerrarModalPermiso()">&times;</button>
+            </div>
+            <div class="modal-cuerpo-permiso">
+                <p id="modal-pregunta-permiso" style="font-weight: 500; font-size: 1rem; margin-bottom: 12px;"></p>
+                <div class="modal-docente-destacado-permiso">
+                    <strong>Docente:</strong> <span id="modal-nombre-docente-destacado"></span>
+                </div>
+            </div>
+            <div class="modal-pie-permiso">
+                <button type="button" class="modal-btn-p modal-btn-p-cancelar" onclick="cerrarModalPermiso()">Cancelar</button>
+                <button type="button" id="modal-btn-confirmar-accion" class="modal-btn-p modal-btn-p-confirmar-autorizar" onclick="ejecutarCambioPermiso()">Confirmar autorización</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICACIÓN TIPO TOAST -->
+    <div id="toast-notificacion-permiso" class="toast-notificacion-permiso">
+        <span id="toast-icono-permiso">✓</span>
+        <span id="toast-mensaje-permiso">Permiso actualizado con éxito</span>
+    </div>
+
+    <script>
+        let docenteSeleccionado = {
+            idUsuario: null,
+            nombreDocente: '',
+            accion: '' // 'autorizar' o 'quitar'
+        };
+
+        function abrirModalPermiso(idUsuario, nombreDocente, accion) {
+            docenteSeleccionado.idUsuario = idUsuario;
+            docenteSeleccionado.nombreDocente = nombreDocente;
+            docenteSeleccionado.accion = accion;
+
+            const modalTitulo = document.getElementById('modal-titulo-permiso');
+            const modalPregunta = document.getElementById('modal-pregunta-permiso');
+            const modalNombre = document.getElementById('modal-nombre-docente-destacado');
+            const btnConfirmar = document.getElementById('modal-btn-confirmar-accion');
+
+            modalNombre.textContent = nombreDocente;
+
+            if (accion === 'autorizar') {
+                modalTitulo.textContent = 'Autorizar permiso de matrícula';
+                modalPregunta.textContent = '«¿Deseas autorizar a este docente para ayudar a gestionar la matrícula y cargar estudiantes?»';
+                btnConfirmar.textContent = 'Confirmar autorización';
+                btnConfirmar.className = 'modal-btn-p modal-btn-p-confirmar-autorizar';
+            } else {
+                modalTitulo.textContent = 'Revocar permiso de matrícula';
+                modalPregunta.textContent = '«¿Deseas revocar el permiso de matrícula a este docente?»';
+                btnConfirmar.textContent = 'Confirmar revocación';
+                btnConfirmar.className = 'modal-btn-p modal-btn-p-confirmar-revocar';
+            }
+
+            document.getElementById('modal-confirmacion-permiso').classList.add('activo');
+        }
+
+        function cerrarModalPermiso() {
+            document.getElementById('modal-confirmacion-permiso').classList.remove('activo');
+            docenteSeleccionado = { idUsuario: null, nombreDocente: '', accion: '' };
+        }
+
+        // Cerrar modal al hacer click fuera
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('modal-confirmacion-permiso');
+            if (event.target === modal) {
+                cerrarModalPermiso();
+            }
+        });
+
+        function mostrarToast(mensaje, esError = false) {
+            const toast = document.getElementById('toast-notificacion-permiso');
+            const toastMsg = document.getElementById('toast-mensaje-permiso');
+            const toastIcon = document.getElementById('toast-icono-permiso');
+
+            toastMsg.textContent = mensaje;
+            toastIcon.textContent = esError ? '⚠️' : '✓';
+            toast.className = 'toast-notificacion-permiso visible ' + (esError ? 'toast-error' : 'toast-exito');
+
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3500);
+        }
+
+        async function ejecutarCambioPermiso() {
+            if (!docenteSeleccionado.idUsuario) return;
+
+            const idUsuario = docenteSeleccionado.idUsuario;
+            const accion = docenteSeleccionado.accion;
+            const nuevoPermiso = (accion === 'autorizar') ? 1 : 0;
+            const btnConfirmar = document.getElementById('modal-btn-confirmar-accion');
+            btnConfirmar.disabled = true;
+
+            try {
+                const response = await fetch("{{ url_for('cambiar_permiso_docente') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        id_usuario: idUsuario,
+                        permiso: nuevoPermiso
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Actualizar fila en la tabla
+                    const fila = document.getElementById('fila-docente-' + idUsuario);
+                    const celdaBadge = document.getElementById('celda-badge-' + idUsuario);
+                    const celdaAccion = document.getElementById('celda-accion-' + idUsuario);
+
+                    if (data.nuevo_permiso === 1) {
+                        fila.setAttribute('data-permiso', 'autorizado');
+                        celdaBadge.innerHTML = '<span class="badge-permiso badge-autorizado">AUTORIZADO</span>';
+                        celdaAccion.innerHTML = `<button type="button" class="btn-accion-permiso btn-quitar" onclick="abrirModalPermiso(${idUsuario}, '${docenteSeleccionado.nombreDocente.replace(/'/g, "\\'")}', 'quitar')">Quitar permiso</button>`;
+                    } else {
+                        fila.setAttribute('data-permiso', 'sin_permiso');
+                        celdaBadge.innerHTML = '<span class="badge-permiso badge-sin-permiso">SIN PERMISO</span>';
+                        celdaAccion.innerHTML = `<button type="button" class="btn-accion-permiso btn-autorizar" onclick="abrirModalPermiso(${idUsuario}, '${docenteSeleccionado.nombreDocente.replace(/'/g, "\\'")}', 'autorizar')">Autorizar carga de estudiantes</button>`;
+                    }
+
+                    // Actualizar contadores
+                    document.getElementById('contador-total-docentes').textContent = data.total_docentes;
+                    document.getElementById('contador-total-autorizados').textContent = data.total_autorizados;
+                    document.getElementById('contador-total-sin-permiso').textContent = data.total_sin_permiso;
+
+                    // Re-filtrar por si hay filtro activo
+                    filtrarDocentes();
+
+                    cerrarModalPermiso();
+                    mostrarToast('Permiso actualizado con éxito');
+                } else {
+                    mostrarToast(data.error || 'Error al actualizar el permiso', true);
+                }
+            } catch (err) {
+                console.error(err);
+                mostrarToast('Error de comunicación con el servidor', true);
+            } finally {
+                btnConfirmar.disabled = false;
+            }
+        }
+
+        function filtrarDocentes() {
+            const textoBusqueda = (document.getElementById('filtro-busqueda-docente')?.value || '').toLowerCase().trim();
+            const areaSeleccionada = (document.getElementById('filtro-area-docente')?.value || '').toLowerCase().trim();
+            const permisoSeleccionado = document.getElementById('filtro-permiso-docente')?.value || 'todos';
+
+            const filas = document.querySelectorAll('#tbody-docentes-permisos tr');
+            let visibles = 0;
+
+            filas.forEach(fila => {
+                const nombre = fila.getAttribute('data-nombre') || '';
+                const usuario = fila.getAttribute('data-usuario') || '';
+                const area = fila.getAttribute('data-area') || '';
+                const permiso = fila.getAttribute('data-permiso') || '';
+
+                const coincideTexto = !textoBusqueda || nombre.includes(textoBusqueda) || usuario.includes(textoBusqueda);
+                const coincideArea = !areaSeleccionada || area === areaSeleccionada;
+                const coincidePermiso = permisoSeleccionado === 'todos' || permiso === permisoSeleccionado;
+
+                if (coincideTexto && coincideArea && coincidePermiso) {
+                    fila.style.display = '';
+                    visibles++;
+                } else {
+                    fila.style.display = 'none';
+                }
+            });
+
+            const msgSinResultados = document.getElementById('msg-sin-resultados-filtro');
+            if (msgSinResultados) {
+                msgSinResultados.style.display = (visibles === 0 && filas.length > 0) ? 'block' : 'none';
+            }
+        }
+    </script>
+
+</body>
+</html>
