@@ -121,7 +121,7 @@ Tablas existentes y su función:
 13. arl: Catálogo de administradoras de riesgos laborales ARL.
 
 
-6. MECANISMO DEL REGISTRO DE ASISTENCIA
+6. MECANISMO DE CONTROL DE INASISTENCIAS
 --------------------------------------------------------------------------------
 Cuando un docente registra la asistencia de un curso, el sistema realiza:
 1. Extracción automática del ID del docente autenticado desde la sesión (session['id_docente']).
@@ -144,8 +144,8 @@ Ubicación: Carpeta `html/`
   Panel principal del docente con bienvenida personalizada y botones a los 4 módulos disponibles.
 - coordinador.html:
   Panel principal del coordinador con bienvenida y accesos a los módulos de supervisión.
-- registrar_asistencia.html:
-  Formulario en dos pasos: primero selección de Grado/Grupo y luego tabla interactiva de estudiantes con selectores de estado.
+- registro_inasistencia.html:
+  Módulo operativo para reportar y justificar inasistencias escolares por grado, grupo y asignatura.
 - consultar_asistencia.html:
   Módulo de búsqueda con filtros dinámicos (Fecha, Grado, Grupo, Estado), tarjetas de resumen y tabla de resultados con insignias de color.
 - estadisticas.html:
@@ -160,8 +160,8 @@ Ubicación: Carpeta `html/`
 - GET/POST /login : Procesa el inicio de sesión y valida las credenciales en MySQL.
 - GET  /docente : Muestra el panel principal del Docente (protegido por rol 'docente').
 - GET  /coordinador : Muestra el panel del Coordinador (protegido por rol 'coordinador').
-- GET  /registrar_asistencia : Carga el selector de grado/grupo y lista de alumnos.
-- POST /guardar_asistencia : Recibe los estados de los alumnos y los inserta en `registroasistencia`.
+- GET  /registro_inasistencia : Formulario operativo de reporte de inasistencias.
+- POST /guardar_inasistencia : Validación e inserción protegida de inasistencias en `registroasistencia`.
 - GET  /consultar_asistencia : Consulta asistencias aplicando filtros dinámicos parametrizados.
 - GET  /estadisticas : Calcula totales agregados, porcentajes y resúmenes por grado y grupo.
 - GET  /reporte : Genera la vista formal de reporte para consultar o imprimir en Chrome.
@@ -177,7 +177,7 @@ Ubicación: Carpeta `html/`
   se redirige inmediatamente a `/login`.
 - Control Estricto de Roles:
   Validación en backend en Python; un docente no puede ejecutar acciones de coordinador
-  ni un coordinador puede registrar asistencia en aula.
+  ni un coordinador puede alterar asignaciones ajenas.
 - Scoping de Datos por Docente:
   El docente únicamente puede consultar asistencias filtradas por su `id_docente` de sesión.
 - Consultas SQL Parametrizadas:
@@ -207,7 +207,7 @@ ASISTEC/
 │   ├── login.html
 │   ├── docente.html
 │   ├── coordinador.html
-│   ├── registrar_asistencia.html
+│   ├── registro_inasistencia.html
 │   ├── consultar_asistencia.html
 │   ├── estadisticas.html
 │   └── reporte.html
@@ -243,7 +243,7 @@ valida las contraseñas, calcula los porcentajes y realiza las consultas a la ba
 
 5. ¿Para qué sirve Flask?
 Es el micro-framework que conecta Python con el navegador web, permitiendo crear rutas
-(como /login, /registrar_asistencia) y renderizar las páginas HTML.
+(como /login, /registro_inasistencia) y renderizar las páginas HTML.
 
 6. ¿Qué hace HTML?
 Define la estructura, textos, tablas y formularios que el usuario visualiza e interactúa

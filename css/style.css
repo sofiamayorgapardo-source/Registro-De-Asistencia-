@@ -383,10 +383,6 @@ body {
     grid-template-columns: 1fr 1fr 1.35fr minmax(190px, auto);
 }
 
-/* TERCERA FILA (Registrar Asistencia): Sede, Fecha, Botón Cargar Estudiantes */
-.formulario-seleccion-academica .fila-tres-col-boton {
-    grid-template-columns: 1fr 1fr minmax(200px, 1fr);
-}
 
 /* Ajustes uniformes para todos los campos de Selección Académica */
 .formulario-seleccion-academica .grupo-filtro {

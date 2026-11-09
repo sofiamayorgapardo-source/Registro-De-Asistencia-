@@ -21,7 +21,7 @@ ASISTEC/
 │   ├── login.html                -> Inicio de sesion
 │   ├── docente.html              -> Panel principal del Docente
 │   ├── coordinador.html          -> Panel principal del Coordinador
-│   ├── registrar_asistencia.html -> Formulario de toma de asistencia
+│   ├── registro_inasistencia.html -> Reporte operativo de inasistencias
 │   ├── consultar_asistencia.html -> Consulta con filtros dinamicos
 │   ├── estadisticas.html         -> Metricas, resumenes y porcentajes
 │   └── reporte.html              -> Reporte formal e impresion
@@ -69,7 +69,7 @@ Paso 4: Abrir Google Chrome e ingresar exactamente a:
 ------------------------------------------------------------------------
 Rol           | Usuario     | Contrasena | Descripcion de Permisos
 ------------------------------------------------------------------------
-Docente       | docente1    | 1234       | Acceso a registrar asistencia,
+Docente       | docente1    | 1234       | Acceso a registrar inasistencias,
               |             |            | consultar historial propio, ver
               |             |            | metricas y generar su reporte.
 ------------------------------------------------------------------------
@@ -80,7 +80,7 @@ Coordinador   | coordinador | admin123   | Acceso a consultas generales,
 
 8. FUNCIONALIDADES DEL SISTEMA
 - Autenticacion con control de acceso por roles (Docente y Coordinador).
-- Registro de asistencia con estados (Presente, Ausente, Tarde) y proteccion anti-duplicados.
+- Registro y control de inasistencias con proteccion anti-duplicados y validacion academica.
 - Consulta de historial con filtros por fecha, grado, grupo y estado.
 - Metricas y estadisticas automaticas con porcentajes seguros y graficos visuales CSS.
 - Reporte formal de asistencia con metadatos y boton de impresion limpia en Google Chrome.
@@ -90,7 +90,7 @@ Coordinador   | coordinador | admin123   | Acceso a consultas generales,
 1. Explicar el objetivo del proyecto: modernizar el control de asistencia en las aulas.
 2. Mostrar la base de datos "asistec" en phpMyAdmin.
 3. Iniciar sesion como Docente (docente1 / 1234) en http://localhost:5000.
-4. Demostrar el registro de asistencia seleccionando Grado 10 / Grupo A.
+4. Demostrar el registro de inasistencia seleccionando Grado 10 / Grupo A.
 5. Demostrar la consulta y aplicacion de filtros en tiempo real.
 6. Demostrar el modulo de estadisticas y porcentajes.
 7. Demostrar el reporte formal y presionar "Imprimir reporte" en Chrome.
