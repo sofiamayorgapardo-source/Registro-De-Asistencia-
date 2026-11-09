@@ -1549,24 +1549,12 @@ def guardar_inasistencia():
     if not fecha_registro:
         fecha_registro = datetime.now().strftime("%Y-%m-%d")
 
-    inasistentes_raw = request.form.getlist('inasistentes')
-    tardes_raw = request.form.getlist('llegadas_tarde')
+    inasistentes_raw = [str(e).strip() for e in request.form.getlist('inasistentes') if str(e).strip()]
+    tardes_raw = [str(e).strip() for e in request.form.getlist('llegadas_tarde') if str(e).strip()]
 
-    # Mapeo de estado por estudiante ('Ausente' o 'Tarde')
-    estado_por_estudiante = {}
-    for e in inasistentes_raw:
-        val_str = str(e).strip()
-        if val_str:
-            estado_por_estudiante[val_str] = 'Ausente'
-    for e in tardes_raw:
-        val_str = str(e).strip()
-        if val_str:
-            estado_por_estudiante[val_str] = 'Tarde'
-
-    inasistentes = list(estado_por_estudiante.keys())
-
-    # Validación 1: Si no se seleccionó ningún estudiante
-    if not inasistentes:
+    # 1. Validación de selección: Debe permitirse solo ausentes, solo tarde o ambos (personas distintas).
+    # Debe rechazarse cuando ambas listas estén vacías.
+    if not inasistentes_raw and not tardes_raw:
         return redirect(url_for('registro_inasistencia',
             cargar=1,
             grado=grado_id,
@@ -1578,6 +1566,59 @@ def guardar_inasistencia():
             fecha=fecha_registro,
             error="Debe seleccionar al menos un estudiante inasistente."
         ))
+
+    # 2. Validación de identificadores numéricos ASCII en ambas listas
+    for est_raw in inasistentes_raw + tardes_raw:
+        if not re.fullmatch(r"[0-9]+", est_raw):
+            return redirect(url_for('registro_inasistencia',
+                cargar=1,
+                grado=grado_id,
+                grupo=grupo_id,
+                jornada=jornada_id,
+                asignatura=asignatura_nombre,
+                sede=sede_nombre,
+                modalidad=modalidad_id,
+                fecha=fecha_registro,
+                error="Identificador de estudiante inválido (debe ser numérico)."
+            ))
+
+    # 3. Validar identificadores duplicados dentro de cada lista
+    if len(inasistentes_raw) != len(set(inasistentes_raw)) or len(tardes_raw) != len(set(tardes_raw)):
+        return redirect(url_for('registro_inasistencia',
+            cargar=1,
+            grado=grado_id,
+            grupo=grupo_id,
+            jornada=jornada_id,
+            asignatura=asignatura_nombre,
+            sede=sede_nombre,
+            modalidad=modalidad_id,
+            fecha=fecha_registro,
+            error="Solicitud inválida: Se detectaron identificadores duplicados en el envío."
+        ))
+
+    # 4. Validar colisiones entre ausentes y llegadas tarde
+    colisiones = set(inasistentes_raw).intersection(set(tardes_raw))
+    if colisiones:
+        return redirect(url_for('registro_inasistencia',
+            cargar=1,
+            grado=grado_id,
+            grupo=grupo_id,
+            jornada=jornada_id,
+            asignatura=asignatura_nombre,
+            sede=sede_nombre,
+            modalidad=modalidad_id,
+            fecha=fecha_registro,
+            error="Solicitud inválida: Un estudiante no puede ser registrado como ausente y llegada tarde simultáneamente."
+        ))
+
+    # Mapeo de estado por estudiante ('Ausente' o 'Tarde')
+    estado_por_estudiante = {}
+    for e in inasistentes_raw:
+        estado_por_estudiante[e] = 'Ausente'
+    for e in tardes_raw:
+        estado_por_estudiante[e] = 'Tarde'
+
+    inasistentes = list(estado_por_estudiante.keys())
 
     conexion = obtener_conexion()
     if not conexion or not conexion.is_connected():
@@ -1687,40 +1728,7 @@ def guardar_inasistencia():
                 ))
 
         # 2. VALIDACIÓN DE ESTUDIANTES
-        # Comprobar que todos los identificadores sean numéricos
-        for est_raw in inasistentes:
-            valor_id = str(est_raw).strip()
-            if not re.fullmatch(r"[0-9]+", valor_id):
-                cursor.close()
-                conexion.close()
-                return redirect(url_for('registro_inasistencia',
-                    cargar=1,
-                    grado=grado_id,
-                    grupo=grupo_id,
-                    jornada=jornada_id,
-                    asignatura=asignatura_nombre,
-                    sede=sede_nombre,
-                    modalidad=modalidad_id,
-                    fecha=fecha_registro,
-                    error="Identificador de estudiante inválido (debe ser numérico)."
-                ))
-
-        # Eliminar duplicados antes de guardar preservando el orden
-        estudiantes_unicos = list(dict.fromkeys([int(e) for e in inasistentes if re.fullmatch(r"[0-9]+", str(e).strip())]))
-        if not estudiantes_unicos:
-            cursor.close()
-            conexion.close()
-            return redirect(url_for('registro_inasistencia',
-                cargar=1,
-                grado=grado_id,
-                grupo=grupo_id,
-                jornada=jornada_id,
-                asignatura=asignatura_nombre,
-                sede=sede_nombre,
-                modalidad=modalidad_id,
-                fecha=fecha_registro,
-                error="Debe seleccionar al menos un estudiante inasistente."
-            ))
+        estudiantes_unicos = [int(e) for e in inasistentes]
 
         # 1.1 RESOLUCIÓN Y VALIDACIÓN DE SEDE MEDIANTE CONSULTA PARAMETRIZADA
         cursor.execute("SELECT Sed_CodigoSede FROM sedes WHERE Sed_NomSede = %s LIMIT 1;", (sede_nombre,))
