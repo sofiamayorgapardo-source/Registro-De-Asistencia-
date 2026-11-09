@@ -1549,7 +1549,21 @@ def guardar_inasistencia():
     if not fecha_registro:
         fecha_registro = datetime.now().strftime("%Y-%m-%d")
 
-    inasistentes = request.form.getlist('inasistentes')
+    inasistentes_raw = request.form.getlist('inasistentes')
+    tardes_raw = request.form.getlist('llegadas_tarde')
+
+    # Mapeo de estado por estudiante ('Ausente' o 'Tarde')
+    estado_por_estudiante = {}
+    for e in inasistentes_raw:
+        val_str = str(e).strip()
+        if val_str:
+            estado_por_estudiante[val_str] = 'Ausente'
+    for e in tardes_raw:
+        val_str = str(e).strip()
+        if val_str:
+            estado_por_estudiante[val_str] = 'Tarde'
+
+    inasistentes = list(estado_por_estudiante.keys())
 
     # Validación 1: Si no se seleccionó ningún estudiante
     if not inasistentes:
@@ -1848,7 +1862,7 @@ def guardar_inasistencia():
             WHERE Reg_CodEstudiante = %s 
               AND Reg_FechaHoraIngreso LIKE %s 
               AND (Reg_Asignatura = %s OR Reg_Asignatura LIKE %s OR %s LIKE CONCAT('%%', Reg_Asignatura, '%%'))
-              AND (Reg_Observacion LIKE 'Ausente%%' OR Reg_Observacion LIKE 'Inasistencia%%');
+              AND (Reg_Observacion LIKE 'Ausente%%' OR Reg_Observacion LIKE 'Inasistencia%%' OR Reg_Observacion LIKE 'Tarde%%');
         """
 
         sql_insert = """
@@ -1871,8 +1885,9 @@ def guardar_inasistencia():
                 ya_existentes += 1
                 nombres_existentes.append(nom_est_str)
             else:
+                tipo_est = estado_por_estudiante.get(str(est_id), 'Ausente')
                 obs = request.form.get(f'obs_{est_id}', '').strip()
-                obs_final = f"Ausente: {obs}" if obs else "Ausente"
+                obs_final = f"{tipo_est}: {obs}" if obs else tipo_est
                 if len(obs_final) > 100:
                     obs_final = obs_final[:100]
                 cursor.execute(sql_insert, (est_id, id_docente, fecha_hora_guardar, obs_final, jornada_id, sede_nombre, asig_nom_real))

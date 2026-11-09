@@ -298,7 +298,7 @@
                                             <th style="width: 50px; text-align: center;">No.</th>
                                             <th style="width: 90px; text-align: center;">Código</th>
                                             <th>Nombre del estudiante</th>
-                                            <th style="width: 150px; text-align: center;">Inasistencia</th>
+                                            <th style="min-width: 195px; width: 210px; text-align: center;">Inasistencia</th>
                                             <th style="width: 140px; text-align: center;">Estado en Fecha</th>
                                             <th>Observación (Opcional)</th>
                                         </tr>
@@ -310,10 +310,16 @@
                                             <td style="text-align: center;"><code>{{ est.Est_CodEstudiante }}</code></td>
                                             <td><strong>{{ est.Est_Apellido }}, {{ est.Est_Nombre }}</strong></td>
                                             <td style="text-align: center;">
-                                                <label class="chk-caja">
-                                                    <input type="checkbox" name="inasistentes" value="{{ est.Est_CodEstudiante }}" class="chk-inasistencia" onchange="actualizarFilaEstado(this, '{{ est.Est_CodEstudiante }}')">
-                                                    <span style="color: #dc2626;">Marcar Ausente</span>
-                                                </label>
+                                                <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start; justify-content: center; padding: 4px 8px;">
+                                                    <label class="chk-caja" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                                        <input type="checkbox" name="inasistentes" value="{{ est.Est_CodEstudiante }}" class="chk-inasistencia chk-ausente" id="ausente_{{ est.Est_CodEstudiante }}" onchange="actualizarFilaAusente(this, '{{ est.Est_CodEstudiante }}')">
+                                                        <span style="color: #dc2626; font-weight: 600; font-size: 0.88rem;">Marcar Ausente</span>
+                                                    </label>
+                                                    <label class="chk-caja" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                                        <input type="checkbox" name="llegadas_tarde" value="{{ est.Est_CodEstudiante }}" class="chk-inasistencia chk-tarde" id="tarde_{{ est.Est_CodEstudiante }}" onchange="actualizarFilaTarde(this, '{{ est.Est_CodEstudiante }}')">
+                                                        <span style="color: #d97706; font-weight: 600; font-size: 0.88rem;">Marcar Llegada Tarde</span>
+                                                    </label>
+                                                </div>
                                             </td>
                                             <td style="text-align: center;">
                                                 {% if est.estado_actual %}
@@ -416,10 +422,29 @@
             .catch(err => console.error('Error asignaturas:', err));
     }
 
-    function actualizarFilaEstado(chk, estId) {
+    function actualizarFilaAusente(chk, estId) {
+        const tardeChk = document.getElementById('tarde_' + estId);
+        if (chk.checked && tardeChk) {
+            tardeChk.checked = false;
+        }
+        actualizarFilaVisual(estId);
+    }
+
+    function actualizarFilaTarde(chk, estId) {
+        const ausenteChk = document.getElementById('ausente_' + estId);
+        if (chk.checked && ausenteChk) {
+            ausenteChk.checked = false;
+        }
+        actualizarFilaVisual(estId);
+    }
+
+    function actualizarFilaVisual(estId) {
         const fila = document.getElementById('fila_' + estId);
+        const ausenteChk = document.getElementById('ausente_' + estId);
+        const tardeChk = document.getElementById('tarde_' + estId);
+        const estaMarcado = (ausenteChk && ausenteChk.checked) || (tardeChk && tardeChk.checked);
         if (fila) {
-            if (chk.checked) {
+            if (estaMarcado) {
                 fila.classList.add('fila-inasistente-activa');
             } else {
                 fila.classList.remove('fila-inasistente-activa');
@@ -429,23 +454,21 @@
     }
 
     function marcarTodos(estado) {
-        const checkboxes = document.querySelectorAll('.chk-inasistencia');
-        checkboxes.forEach(chk => {
+        const checkboxesAusente = document.querySelectorAll('.chk-ausente');
+        const checkboxesTarde = document.querySelectorAll('.chk-tarde');
+        checkboxesTarde.forEach(chk => { chk.checked = false; });
+        checkboxesAusente.forEach(chk => {
             chk.checked = estado;
-            const fila = chk.closest('tr');
-            if (fila) {
-                if (estado) {
-                    fila.classList.add('fila-inasistente-activa');
-                } else {
-                    fila.classList.remove('fila-inasistente-activa');
-                }
-            }
+            const estId = chk.value;
+            actualizarFilaVisual(estId);
         });
         actualizarContador();
     }
 
     function actualizarContador() {
-        const total = document.querySelectorAll('.chk-inasistencia:checked').length;
+        const totalAusentes = document.querySelectorAll('.chk-ausente:checked').length;
+        const totalTardes = document.querySelectorAll('.chk-tarde:checked').length;
+        const total = totalAusentes + totalTardes;
         const cont = document.getElementById('contadorInasistentes');
         if (cont) {
             cont.textContent = total;
