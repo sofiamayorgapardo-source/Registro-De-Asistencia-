@@ -432,6 +432,8 @@ def obtener_estudiantes_por_grado_grupo(grado, grupo, jornada=None, sede=None):
 
 @app.route('/api/asignaturas_validas')
 def api_asignaturas_validas():
+    if 'usuario' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     grado = request.args.get('grado', '')
     modalidad = request.args.get('modalidad', 'General')
     materias = obtener_asignaturas_validas(grado, modalidad)
@@ -502,6 +504,8 @@ def api_grupos_validos():
 
 @app.route('/api/estudiantes_validos')
 def api_estudiantes_validos():
+    if 'usuario' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     grado = request.args.get('grado', '').strip()
     grupo = request.args.get('grupo', '').strip()
     jornada = request.args.get('jornada', '').strip()
@@ -676,6 +680,13 @@ def crear_cuenta():
             'area_jefe': area_jefe
         }
 
+        # Validación estricta de tipo de usuario permitido (lista blanca)
+        if tipo_usuario not in ('docente', 'coordinador'):
+            return render_template('crear_cuenta.html',
+                                   error="Tipo de usuario no válido.",
+                                   asignaturas=asignaturas,
+                                   form_data=form_data), 400
+
         # Validaciones comunes obligatorias
         if not tipo_usuario or not nombre_completo or not usuario or not password or not confirmar_password:
             return render_template('crear_cuenta.html', 
@@ -833,7 +844,7 @@ def crear_cuenta():
                         VALUES (%s, %s, 0);
                     """, (nuevo_id_docente, int(a_sec)))
 
-            else:
+            elif tipo_usuario == 'coordinador':
                 # Coordinador
                 sql_usr = """
                     INSERT INTO usuarios (usuario, password, rol, id_docente, nombre, estado)
@@ -842,6 +853,13 @@ def crear_cuenta():
                 cur_check.execute(sql_usr, (
                     usuario, hash_password, 'coordinador', nombre_completo, 'Activo'
                 ))
+            else:
+                cur_check.close()
+                conn_check.close()
+                return render_template('crear_cuenta.html',
+                                       error="Tipo de usuario no válido.",
+                                       asignaturas=asignaturas,
+                                       form_data=form_data), 400
 
             conn_check.commit()
             cur_check.close()
@@ -1910,7 +1928,53 @@ def guardar_inasistencia():
 
         cursor.execute("SELECT Gra_NombreGrado FROM grado WHERE Gra_Codigo = %s;", (grado_id,))
         res_g = cursor.fetchone()
-        grado_nom = res_g['Gra_NombreGrado'] if res_g else grado_id
+        if not res_g:
+            cursor.close()
+            conexion.close()
+            return redirect(url_for('registro_inasistencia',
+                cargar=1,
+                grado=grado_id,
+                grupo=grupo_id,
+                jornada=jornada_id,
+                asignatura=asignatura_nombre,
+                sede=sede_nombre,
+                modalidad=modalidad_id,
+                fecha=fecha_registro,
+                error="El grado seleccionado no existe."
+            ))
+        grado_nom = res_g['Gra_NombreGrado']
+
+        # 1. VALIDACIÓN DEL GRUPO
+        cursor.execute("SELECT Gru_NombreGrupo, Gru_Cod_Grado FROM grupo WHERE Gru_Codigo = %s;", (grupo_id,))
+        res_grp = cursor.fetchone()
+        if not res_grp:
+            cursor.close()
+            conexion.close()
+            return redirect(url_for('registro_inasistencia',
+                cargar=1,
+                grado=grado_id,
+                grupo=grupo_id,
+                jornada=jornada_id,
+                asignatura=asignatura_nombre,
+                sede=sede_nombre,
+                modalidad=modalidad_id,
+                fecha=fecha_registro,
+                error="El grupo seleccionado no existe."
+            ))
+        if str(res_grp.get('Gru_Cod_Grado')) != str(grado_id):
+            cursor.close()
+            conexion.close()
+            return redirect(url_for('registro_inasistencia',
+                cargar=1,
+                grado=grado_id,
+                grupo=grupo_id,
+                jornada=jornada_id,
+                asignatura=asignatura_nombre,
+                sede=sede_nombre,
+                modalidad=modalidad_id,
+                fecha=fecha_registro,
+                error=f"Rechazado por regla académica: El grupo '{res_grp.get('Gru_NombreGrupo')}' no corresponde al Grado {grado_nom}."
+            ))
 
         asig_nom_real = asignatura_nombre
         if str(asignatura_nombre).isdigit():
@@ -1952,6 +2016,172 @@ def guardar_inasistencia():
                     error=f"Acceso denegado: No tienes asignada la asignatura '{asig_nom_real}'."
                 ))
 
+        # 2. VALIDACIÓN DE ESTUDIANTES
+        # Comprobar que todos los identificadores sean numéricos
+        for est_raw in inasistentes:
+            valor_id = str(est_raw).strip()
+            if not re.fullmatch(r"[0-9]+", valor_id):
+                cursor.close()
+                conexion.close()
+                return redirect(url_for('registro_inasistencia',
+                    cargar=1,
+                    grado=grado_id,
+                    grupo=grupo_id,
+                    jornada=jornada_id,
+                    asignatura=asignatura_nombre,
+                    sede=sede_nombre,
+                    modalidad=modalidad_id,
+                    fecha=fecha_registro,
+                    error="Identificador de estudiante inválido (debe ser numérico)."
+                ))
+
+        # Eliminar duplicados antes de guardar preservando el orden
+        estudiantes_unicos = list(dict.fromkeys([int(e) for e in inasistentes if re.fullmatch(r"[0-9]+", str(e).strip())]))
+        if not estudiantes_unicos:
+            cursor.close()
+            conexion.close()
+            return redirect(url_for('registro_inasistencia',
+                cargar=1,
+                grado=grado_id,
+                grupo=grupo_id,
+                jornada=jornada_id,
+                asignatura=asignatura_nombre,
+                sede=sede_nombre,
+                modalidad=modalidad_id,
+                fecha=fecha_registro,
+                error="Debe seleccionar al menos un estudiante inasistente."
+            ))
+
+        # 1.1 RESOLUCIÓN Y VALIDACIÓN DE SEDE MEDIANTE CONSULTA PARAMETRIZADA
+        cursor.execute("SELECT Sed_CodigoSede FROM sedes WHERE Sed_NomSede = %s LIMIT 1;", (sede_nombre,))
+        res_sed = cursor.fetchone()
+        if not res_sed and str(sede_nombre).isdigit():
+            cursor.execute("SELECT Sed_CodigoSede FROM sedes WHERE Sed_CodigoSede = %s LIMIT 1;", (int(sede_nombre),))
+            res_sed = cursor.fetchone()
+        if not res_sed:
+            cursor.close()
+            conexion.close()
+            return redirect(url_for('registro_inasistencia',
+                cargar=1,
+                grado=grado_id,
+                grupo=grupo_id,
+                jornada=jornada_id,
+                asignatura=asignatura_nombre,
+                sede=sede_nombre,
+                modalidad=modalidad_id,
+                fecha=fecha_registro,
+                error=f"La sede '{sede_nombre}' no existe en el sistema."
+            ))
+        sede_cod_esperado = res_sed['Sed_CodigoSede']
+
+        # Normalización controlada de jornada para igualdad exacta
+        def normalizar_jornada(j):
+            val = str(j or '').strip().lower()
+            val = val.replace('ñ', 'n').replace('ã±', 'n').replace('\ufffd', 'n')
+            return val
+
+        # Consultar y verificar cada estudiante en la base de datos
+        estudiantes_validados = []
+        nombres_estudiantes_validados = {}
+
+        sql_verificar_est = """
+            SELECT e.Est_CodEstudiante, e.Est_Nombre, e.Est_Apellido, e.Est_Cod_Grado,
+                   e.Est_Cod_Grupo, e.Est_Jornada, e.Est_Estado, e.Est_Cod_SedeEstudiantil, s.Sed_NomSede
+            FROM estudiantes e
+            LEFT JOIN sedes s ON e.Est_Cod_SedeEstudiantil = s.Sed_CodigoSede
+            WHERE e.Est_CodEstudiante = %s;
+        """
+
+        for est_id in estudiantes_unicos:
+            cursor.execute(sql_verificar_est, (est_id,))
+            est_info = cursor.fetchone()
+
+            # Verificar existencia del estudiante
+            if not est_info:
+                cursor.close()
+                conexion.close()
+                return redirect(url_for('registro_inasistencia',
+                    cargar=1,
+                    grado=grado_id,
+                    grupo=grupo_id,
+                    jornada=jornada_id,
+                    asignatura=asignatura_nombre,
+                    sede=sede_nombre,
+                    modalidad=modalidad_id,
+                    fecha=fecha_registro,
+                    error=f"El estudiante con código {est_id} no existe en el sistema."
+                ))
+
+            nom_completo = f"{est_info['Est_Apellido']} {est_info['Est_Nombre']}".strip()
+
+            # Verificar estado Activo
+            if str(est_info.get('Est_Estado', '')).strip().lower() != 'activo':
+                cursor.close()
+                conexion.close()
+                return redirect(url_for('registro_inasistencia',
+                    cargar=1,
+                    grado=grado_id,
+                    grupo=grupo_id,
+                    jornada=jornada_id,
+                    asignatura=asignatura_nombre,
+                    sede=sede_nombre,
+                    modalidad=modalidad_id,
+                    fecha=fecha_registro,
+                    error=f"El estudiante {nom_completo} (ID: {est_id}) no se encuentra activo."
+                ))
+
+            # Verificar pertenencia al grado y grupo seleccionados
+            if str(est_info.get('Est_Cod_Grado')) != str(grado_id) or str(est_info.get('Est_Cod_Grupo')) != str(grupo_id):
+                cursor.close()
+                conexion.close()
+                return redirect(url_for('registro_inasistencia',
+                    cargar=1,
+                    grado=grado_id,
+                    grupo=grupo_id,
+                    jornada=jornada_id,
+                    asignatura=asignatura_nombre,
+                    sede=sede_nombre,
+                    modalidad=modalidad_id,
+                    fecha=fecha_registro,
+                    error=f"El estudiante {nom_completo} (ID: {est_id}) no pertenece al Grado y Grupo seleccionados."
+                ))
+
+            # 1. VERIFICAR JORNADA MEDIANTE NORMALIZACIÓN CONTROLADA E IGUALDAD EXACTA
+            if jornada_id:
+                if normalizar_jornada(est_info.get('Est_Jornada')) != normalizar_jornada(jornada_id):
+                    cursor.close()
+                    conexion.close()
+                    return redirect(url_for('registro_inasistencia',
+                        cargar=1,
+                        grado=grado_id,
+                        grupo=grupo_id,
+                        jornada=jornada_id,
+                        asignatura=asignatura_nombre,
+                        sede=sede_nombre,
+                        modalidad=modalidad_id,
+                        fecha=fecha_registro,
+                        error=f"El estudiante {nom_completo} (ID: {est_id}) no corresponde a la jornada {jornada_id}."
+                    ))
+
+            # 2. VERIFICAR SEDE MEDIANTE COMPARACIÓN EXACTA CON Est_Cod_SedeEstudiantil
+            if str(est_info.get('Est_Cod_SedeEstudiantil')) != str(sede_cod_esperado):
+                cursor.close()
+                conexion.close()
+                return redirect(url_for('registro_inasistencia',
+                    cargar=1,
+                    grado=grado_id,
+                    grupo=grupo_id,
+                    jornada=jornada_id,
+                    asignatura=asignatura_nombre,
+                    sede=sede_nombre,
+                    modalidad=modalidad_id,
+                    fecha=fecha_registro,
+                    error=f"El estudiante {nom_completo} (ID: {est_id}) no pertenece a la sede {sede_nombre}."
+                ))
+
+            estudiantes_validados.append(est_id)
+            nombres_estudiantes_validados[est_id] = nom_completo
+
         ahora = datetime.now()
         hora_actual = ahora.strftime("%H:%M:%S")
         fecha_hora_guardar = f"{fecha_registro} {hora_actual}"
@@ -1974,13 +2204,12 @@ def guardar_inasistencia():
         ya_existentes = 0
         nombres_existentes = []
 
-        for est_id in inasistentes:
+        # 3. CICLO DE INSERCIÓN: Utiliza EXCLUSIVAMENTE los identificadores previamente validados
+        for est_id in estudiantes_validados:
             cursor.execute(sql_check, (est_id, f"{fecha_registro}%", asig_nom_real, f"%{asig_nom_real}%", asig_nom_real))
             duplicado = cursor.fetchone()
 
-            cursor.execute("SELECT Est_Nombre, Est_Apellido FROM estudiantes WHERE Est_CodEstudiante = %s;", (est_id,))
-            f_nom = cursor.fetchone()
-            nom_est_str = f"{f_nom['Est_Apellido']} {f_nom['Est_Nombre']}" if f_nom else f"Código {est_id}"
+            nom_est_str = nombres_estudiantes_validados.get(est_id, f"Código {est_id}")
 
             if duplicado:
                 ya_existentes += 1
@@ -2043,6 +2272,15 @@ def guardar_inasistencia():
     except Exception as e:
         print(f"[ERROR GUARDAR INASISTENCIA]: {e}")
         if conexion and conexion.is_connected():
+            try:
+                conexion.rollback()
+            except Exception:
+                pass
+            try:
+                if cursor:
+                    cursor.close()
+            except Exception:
+                pass
             conexion.close()
         return redirect(url_for('registro_inasistencia',
             cargar=1,
