@@ -7,7 +7,7 @@ ASISTEC es una solución web académica diseñada para modernizar, agilizar y ce
 ## 🚀 Características Principales
 
 - **Gestión por Roles:**
-  - **Docente:** Registro y consulta de asistencia diaria en asignaturas y grupos autorizados, control de justificaciones de inasistencia.
+  - **Docente:** Registro de inasistencias y consulta de asistencia en asignaturas y grupos autorizados, control de justificaciones de inasistencia.
   - **Coordinación:** Administración académica integral, aprobación/activación de docentes, importación y exportación masiva de matrícula, reportes globales.
   - **Rectoría:** Supervisión institucional en modo consulta y seguimiento analítico de estadísticas.
 - **Seguridad Integrada:**
@@ -55,7 +55,6 @@ ASISTEC/
 │   ├── docente.html
 │   ├── coordinador.html
 │   ├── rectoria.html
-│   ├── registrar_asistencia.html
 │   ├── consultar_asistencia.html
 │   ├── registro_inasistencia.html
 │   ├── gestion_estudiantes.html
