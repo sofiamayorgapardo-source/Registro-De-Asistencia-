@@ -30,7 +30,8 @@ def obtener_conexion():
             "user": user,
             "password": password,
             "database": database,
-            "charset": "utf8mb4"
+            "charset": "utf8mb4",
+            "connection_timeout": 10
         }
 
         # Configuración SSL para TiDB Cloud.

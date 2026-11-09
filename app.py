@@ -895,8 +895,11 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-def obtener_permiso_docentes_tecnologia_bd():
-    conn = obtener_conexion()
+def obtener_permiso_docentes_tecnologia_bd(conn=None):
+    debe_cerrar = False
+    if conn is None or not conn.is_connected():
+        conn = obtener_conexion()
+        debe_cerrar = True
     if not conn or not conn.is_connected():
         return False
     try:
@@ -904,10 +907,11 @@ def obtener_permiso_docentes_tecnologia_bd():
         cur.execute("SELECT valor FROM configuracion_sistema WHERE clave = 'permiso_docentes_tecnologia' LIMIT 1;")
         r = cur.fetchone()
         cur.close()
-        conn.close()
+        if debe_cerrar:
+            conn.close()
         return bool(r and r['valor'] == '1')
     except Exception:
-        if conn and conn.is_connected():
+        if debe_cerrar and conn and conn.is_connected():
             conn.close()
         return False
 
@@ -927,34 +931,27 @@ def obtener_anio_lectivo_activo_bd():
             conn.close()
         return 2026
 
-def obtener_info_academica_docente(id_docente):
+def obtener_info_academica_docente(id_docente, conn=None):
+    vacio = {
+        'area_principal': '',
+        'areas_secundarias': [],
+        'area_secundaria': 'Ninguna',
+        'areas_adicionales': [],
+        'asignatura_principal': '',
+        'asignaturas_adicionales': [],
+        'todas_asignaturas': [],
+        'es_jefe': False,
+        'areas_jefe': [],
+        'area_que_dirige': ''
+    }
     if not id_docente:
-        return {
-            'area_principal': '',
-            'areas_secundarias': [],
-            'area_secundaria': 'Ninguna',
-            'areas_adicionales': [],
-            'asignatura_principal': '',
-            'asignaturas_adicionales': [],
-            'todas_asignaturas': [],
-            'es_jefe': False,
-            'areas_jefe': [],
-            'area_que_dirige': ''
-        }
-    conn = obtener_conexion()
+        return vacio
+    debe_cerrar = False
+    if conn is None or not conn.is_connected():
+        conn = obtener_conexion()
+        debe_cerrar = True
     if not conn or not conn.is_connected():
-        return {
-            'area_principal': '',
-            'areas_secundarias': [],
-            'area_secundaria': 'Ninguna',
-            'areas_adicionales': [],
-            'asignatura_principal': '',
-            'asignaturas_adicionales': [],
-            'todas_asignaturas': [],
-            'es_jefe': False,
-            'areas_jefe': [],
-            'area_que_dirige': ''
-        }
+        return vacio
     try:
         cur = conn.cursor(dictionary=True)
         # 1. Obtener áreas del docente
@@ -1003,7 +1000,8 @@ def obtener_info_academica_docente(id_docente):
         area_sec_str = ", ".join(areas_secundarias) if areas_secundarias else 'Ninguna'
 
         cur.close()
-        conn.close()
+        if debe_cerrar:
+            conn.close()
 
         return {
             'area_principal': area_principal,
@@ -1019,19 +1017,9 @@ def obtener_info_academica_docente(id_docente):
         }
     except Exception as e:
         print(f"[ERROR INFO ACADEMICA DOCENTE]: {e}")
-        if conn and conn.is_connected():
+        if debe_cerrar and conn and conn.is_connected():
             conn.close()
-        return {
-            'area_principal': '',
-            'area_secundaria': 'Ninguna',
-            'areas_adicionales': [],
-            'asignatura_principal': '',
-            'asignaturas_adicionales': [],
-            'todas_asignaturas': [],
-            'es_jefe': False,
-            'areas_jefe': [],
-            'area_que_dirige': ''
-        }
+        return vacio
 
 def docente_tiene_permiso_materia(id_docente, materia):
     """
@@ -1072,8 +1060,11 @@ def obtener_area_docente(id_docente):
         return ""
 
 
-def obtener_areas_disponibles_bd():
-    conn = obtener_conexion()
+def obtener_areas_disponibles_bd(conn=None):
+    debe_cerrar = False
+    if conn is None or not conn.is_connected():
+        conn = obtener_conexion()
+        debe_cerrar = True
     if not conn or not conn.is_connected():
         return []
     try:
@@ -1081,35 +1072,82 @@ def obtener_areas_disponibles_bd():
         cur.execute("SELECT DISTINCT Asi_NomAsignatura FROM asignatura ORDER BY Asi_NomAsignatura;")
         rows = cur.fetchall()
         cur.close()
-        conn.close()
+        if debe_cerrar:
+            conn.close()
         return [r['Asi_NomAsignatura'] for r in rows if r.get('Asi_NomAsignatura')]
     except Exception as e:
         print(f"[ERROR OBTENER AREAS BD]: {e}")
-        if conn and conn.is_connected():
+        if debe_cerrar and conn and conn.is_connected():
             conn.close()
         return []
 
-def obtener_docentes_con_permisos():
-    conn = obtener_conexion()
+def obtener_docentes_con_permisos(conn=None):
+    debe_cerrar = False
+    if conn is None or not conn.is_connected():
+        conn = obtener_conexion()
+        debe_cerrar = True
     if not conn or not conn.is_connected():
         return []
     try:
         cur = conn.cursor(dictionary=True)
+        # 1. Consulta optimizada de usuarios y docentes con fallback a su asignatura principal inicial
         cur.execute("""
             SELECT u.id_usuario, u.usuario, u.id_docente, u.nombre, COALESCE(u.permiso_matricula, 0) AS permiso_matricula,
-                   d.Doc_Nombres, d.Doc_Apellidos
+                   d.Doc_Nombres, d.Doc_Apellidos,
+                   fb_a.Asi_NomAsignatura AS fallback_area
             FROM usuarios u
             LEFT JOIN docentes d ON u.id_docente = d.Doc_CodDocentes
+            LEFT JOIN asignatura fb_a ON d.Doc_Cod_Asignatura = fb_a.Asi_CodAsignatura
             WHERE u.rol = 'docente'
-            ORDER BY COALESCE(NULLIF(u.nombre, ''), CONCAT(COALESCE(d.Doc_Nombres, ''), ' ', COALESCE(d.Doc_Apellidos, '')), u.usuario) ASC;
+            ORDER BY COALESCE(NULLIF(u.nombre, ''), CONCAT(COALESCE(d.Doc_Nombres, ''), ' ', COALESCE(d.Doc_Apellidos, '')), u.usuario) ASC, u.id_usuario ASC;
         """)
         filas = cur.fetchall()
+
+        # 2. Obtener todas las áreas asignadas en docente_areas mediante consulta agrupada (1 solo viaje a la BD)
+        ids_docentes = [f['id_docente'] for f in filas if f.get('id_docente')]
+        areas_por_docente = {}
+        if ids_docentes:
+            format_strings = ','.join(['%s'] * len(ids_docentes))
+            cur.execute(f"""
+                SELECT da.id_docente, da.es_principal, da.es_jefe, a.Asi_NomAsignatura
+                FROM docente_areas da
+                JOIN asignatura a ON da.id_area = a.Asi_CodAsignatura
+                WHERE da.id_docente IN ({format_strings})
+                ORDER BY da.es_principal DESC, da.id ASC;
+            """, tuple(ids_docentes))
+            filas_areas = cur.fetchall()
+
+            for r in filas_areas:
+                idd = r['id_docente']
+                if idd not in areas_por_docente:
+                    areas_por_docente[idd] = {'principal': '', 'secundarias': [], 'jefe': []}
+                if r['es_principal']:
+                    if not areas_por_docente[idd]['principal']:
+                        areas_por_docente[idd]['principal'] = r['Asi_NomAsignatura']
+                else:
+                    if r['Asi_NomAsignatura'] not in areas_por_docente[idd]['secundarias']:
+                        areas_por_docente[idd]['secundarias'].append(r['Asi_NomAsignatura'])
+                if r['es_jefe']:
+                    if r['Asi_NomAsignatura'] not in areas_por_docente[idd]['jefe']:
+                        areas_por_docente[idd]['jefe'].append(r['Asi_NomAsignatura'])
+
         cur.close()
-        conn.close()
+        if debe_cerrar:
+            conn.close()
 
         resultado = []
         for f in filas:
-            info = obtener_info_academica_docente(f['id_docente'])
+            idd = f.get('id_docente')
+            info_areas = areas_por_docente.get(idd, {'principal': '', 'secundarias': [], 'jefe': []})
+
+            area_principal = info_areas['principal']
+            # Fallback a tabla docentes si no hubiera registro en docente_areas
+            if not area_principal and f.get('fallback_area'):
+                area_principal = f['fallback_area']
+
+            areas_sec = info_areas['secundarias']
+            area_sec_str = ", ".join(areas_sec) if areas_sec else 'Ninguna'
+
             nombre_doc = (f.get('nombre') or '').strip()
             if not nombre_doc:
                 nom = (f.get('Doc_Nombres') or '').strip()
@@ -1121,14 +1159,14 @@ def obtener_docentes_con_permisos():
                 'usuario': f['usuario'],
                 'nombre': nombre_doc,
                 'id_docente': f['id_docente'],
-                'area_principal': info.get('area_principal') or 'Sin asignar',
-                'areas_secundarias': info.get('area_secundaria') or 'Ninguna',
+                'area_principal': area_principal or 'Sin asignar',
+                'areas_secundarias': area_sec_str,
                 'permiso_matricula': 1 if f.get('permiso_matricula') == 1 else 0
             })
         return resultado
     except Exception as e:
         print(f"[ERROR OBTENER DOCENTES PERMISOS]: {e}")
-        if conn and conn.is_connected():
+        if debe_cerrar and conn and conn.is_connected():
             conn.close()
         return []
 
@@ -1196,12 +1234,34 @@ def coordinador():
         if session.get('rol') == 'rectoria':
             return redirect(url_for('rectoria'))
         return redirect(url_for('docente'))
-    permiso_tec = obtener_permiso_docentes_tecnologia_bd()
-    docentes_registrados = obtener_docentes_con_permisos()
+
+    conn = obtener_conexion()
+    if not conn or not conn.is_connected():
+        return render_template(
+            'coordinador.html',
+            usuario=session.get('usuario'),
+            rol='coordinador',
+            puede_gestionar_estudiantes=True,
+            permiso_docentes_tec=False,
+            docentes_registrados=[],
+            total_docentes=0,
+            total_autorizados=0,
+            total_sin_permiso=0,
+            todas_areas=[]
+        )
+
+    try:
+        permiso_tec = obtener_permiso_docentes_tecnologia_bd(conn=conn)
+        docentes_registrados = obtener_docentes_con_permisos(conn=conn)
+        todas_areas = obtener_areas_disponibles_bd(conn=conn)
+    finally:
+        if conn and conn.is_connected():
+            conn.close()
+
     total_docentes = len(docentes_registrados)
     total_autorizados = sum(1 for d in docentes_registrados if d.get('permiso_matricula') == 1)
     total_sin_permiso = total_docentes - total_autorizados
-    todas_areas = obtener_areas_disponibles_bd()
+
     return render_template(
         'coordinador.html',
         usuario=session.get('usuario'),
