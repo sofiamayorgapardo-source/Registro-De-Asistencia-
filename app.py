@@ -30,7 +30,13 @@ except Exception:
     pass
 
 # Configuración de clave secreta segura desde variables de entorno
-app.secret_key = os.environ.get('SECRET_KEY', 'asistec_secret_key_2026_dev_fallback')
+secret_key_env = os.environ.get('SECRET_KEY', '').strip()
+if os.environ.get('RENDER'):
+    if not secret_key_env:
+        raise RuntimeError("La variable de entorno SECRET_KEY es obligatoria en producción (Render).")
+    app.secret_key = secret_key_env
+else:
+    app.secret_key = secret_key_env or 'asistec_secret_key_2026_dev_fallback'
 
 # Configuración de seguridad para cookies de sesión
 app.config.update(
